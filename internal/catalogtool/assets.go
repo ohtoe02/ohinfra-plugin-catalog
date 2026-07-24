@@ -25,7 +25,7 @@ func Materialize(
 	httpClient *http.Client,
 	allowedHosts []string,
 ) error {
-	if err := os.MkdirAll(outputDirectory, 0o700); err != nil {
+	if err := os.MkdirAll(outputDirectory, 0o755); err != nil {
 		return err
 	}
 	for _, entry := range entries {
@@ -34,7 +34,7 @@ func Materialize(
 		}
 		for _, asset := range entry.Version.Assets {
 			directory := filepath.Join(outputDirectory, entry.Name, entry.Version.Version)
-			if err := os.MkdirAll(directory, 0o700); err != nil {
+			if err := os.MkdirAll(directory, 0o755); err != nil {
 				return err
 			}
 			if err := materializeAsset(

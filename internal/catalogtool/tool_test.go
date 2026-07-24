@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -190,6 +191,20 @@ func TestMaterializeVerifiesAssetAndWritesExpectedManifest(t *testing.T) {
 	manifestPath := filepath.Join(output, "sample", "1.0.0", "manifest.json")
 	if _, err := os.Stat(manifestPath); err != nil {
 		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" {
+		for _, directory := range []string{
+			filepath.Join(output, "sample"),
+			filepath.Join(output, "sample", "1.0.0"),
+		} {
+			info, err := os.Stat(directory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := info.Mode().Perm(); got != 0o755 {
+				t.Fatalf("verification directory %s mode=%#o, want 0755", directory, got)
+			}
+		}
 	}
 }
 
