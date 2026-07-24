@@ -15,9 +15,10 @@ import (
 
 const (
 	protocolVersion = 1
-	version         = "1.0.0"
 	defaultRoot     = "/tmp/ohinfra-example"
 )
+
+var version = "1.0.0"
 
 type Manifest struct {
 	ProtocolVersion int       `json:"protocol_version"`

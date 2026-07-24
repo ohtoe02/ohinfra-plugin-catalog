@@ -1,8 +1,10 @@
 package catalogtool
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -24,6 +26,7 @@ func TestAuthorDocumentationLayout(t *testing.T) {
 		"examples/minimal-go/.github/workflows/release.yml",
 		"examples/minimal-go/README.md",
 		"examples/minimal-go/testdata/invocation.json",
+		"examples/minimal-go/testdata/manifest.json",
 		"examples/minimal-go/catalog/example-plugin/1.0.0.yaml",
 	}
 	for _, name := range required {
@@ -55,3 +58,32 @@ func TestAuthorDocumentationLayout(t *testing.T) {
 	}
 }
 
+func TestExampleCatalogManifestMatchesGolden(t *testing.T) {
+	t.Parallel()
+
+	root := filepath.Clean(filepath.Join("..", ".."))
+	entries, err := LoadEntries(filepath.Join(
+		root, "examples", "minimal-go", "catalog",
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("entry count = %d, want 1", len(entries))
+	}
+
+	encoded, err := os.ReadFile(filepath.Join(
+		root, "examples", "minimal-go", "testdata", "manifest.json",
+	))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var golden Manifest
+	if err := json.Unmarshal(encoded, &golden); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(entries[0].Version.Manifest, golden) {
+		t.Fatalf("catalog manifest does not match example golden\ncatalog: %#v\ngolden: %#v",
+			entries[0].Version.Manifest, golden)
+	}
+}

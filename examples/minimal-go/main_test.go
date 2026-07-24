@@ -32,6 +32,32 @@ func TestManifestDefinesDiagnosticAndOperationalCommands(t *testing.T) {
 	}
 }
 
+func TestManifestMatchesCatalogGolden(t *testing.T) {
+	t.Parallel()
+
+	expected, err := os.ReadFile(filepath.Join("testdata", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual, err := json.Marshal(pluginManifest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var expectedValue any
+	if err := json.Unmarshal(expected, &expectedValue); err != nil {
+		t.Fatal(err)
+	}
+	var actualValue any
+	if err := json.Unmarshal(actual, &actualValue); err != nil {
+		t.Fatal(err)
+	}
+	expectedCanonical, _ := json.Marshal(expectedValue)
+	actualCanonical, _ := json.Marshal(actualValue)
+	if !bytes.Equal(expectedCanonical, actualCanonical) {
+		t.Fatalf("manifest does not match testdata/manifest.json\nactual: %s", actual)
+	}
+}
+
 func TestExecuteDiagnosticInvocationReturnsCanonicalResult(t *testing.T) {
 	t.Parallel()
 
