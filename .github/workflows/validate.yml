@@ -1,0 +1,61 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.5
+          check-latest: false
+      - run: go test -race ./...
+      - run: go vet ./...
+      - run: go run ./cmd/catalogctl validate --plugins plugins
+
+  verify-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.5
+          check-latest: false
+      - run: go run ./cmd/catalogctl materialize --plugins plugins --output verification
+      - name: Verify plugin manifests without privileges or network
+        shell: bash
+        run: |
+          set -euo pipefail
+          find verification -type f -name plugin -print0 |
+          while IFS= read -r -d '' binary; do
+            directory="$(dirname "$binary")"
+            relative="${directory#verification/}"
+            docker run --rm \
+              --network none \
+              --read-only \
+              --cap-drop ALL \
+              --security-opt no-new-privileges \
+              --pids-limit 64 \
+              --memory 128m \
+              --cpus 1 \
+              --user 65534:65534 \
+              -v "$PWD/$directory:/plugin:ro" \
+              debian:13-slim \
+              /plugin/plugin manifest --protocol=1 > "$directory/actual.json"
+            go run ./cmd/catalogctl compare-manifest \
+              --expected "$directory/manifest.json" \
+              --actual "$directory/actual.json"
+            echo "verified $relative"
+          done

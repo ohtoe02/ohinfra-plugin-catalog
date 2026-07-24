@@ -1,0 +1,57 @@
+name: publish signed catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      sequence:
+        description: Monotonically increasing catalog sequence
+        required: true
+        type: number
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: catalog-production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: main
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.5
+          check-latest: false
+      - run: go test ./...
+      - run: go run ./cmd/catalogctl validate --plugins plugins
+      - name: Build deterministic snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          expires_at="$(date -u -d '+14 days' +%Y-%m-%dT%H:%M:%SZ)"
+          go run ./cmd/catalogctl build \
+            --plugins plugins \
+            --output dist/index-v1.json \
+            --sequence "${{ inputs.sequence }}" \
+            --generated-at "$generated_at" \
+            --expires-at "$expires_at"
+      - name: Sign snapshot
+        env:
+          CATALOG_SIGNING_KEYS: ${{ secrets.CATALOG_SIGNING_KEYS }}
+        run: >-
+          go run ./cmd/catalogctl sign
+          --index dist/index-v1.json
+          --output dist/index-v1.json.sig
+      - name: Publish immutable release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "catalog-v1-seq-${{ inputs.sequence }}"
+          dist/index-v1.json
+          dist/index-v1.json.sig
+          --title "Catalog v1 sequence ${{ inputs.sequence }}"
+          --notes "Signed catalog snapshot sequence ${{ inputs.sequence }}."
+          --latest
