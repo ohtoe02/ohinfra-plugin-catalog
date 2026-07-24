@@ -25,6 +25,9 @@ func Materialize(
 	httpClient *http.Client,
 	allowedHosts []string,
 ) error {
+	if err := os.MkdirAll(outputDirectory, 0o700); err != nil {
+		return err
+	}
 	for _, entry := range entries {
 		if err := ValidateEntry(entry); err != nil {
 			return err

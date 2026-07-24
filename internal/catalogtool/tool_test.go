@@ -181,6 +181,20 @@ func TestMaterializeVerifiesAssetAndWritesExpectedManifest(t *testing.T) {
 	}
 }
 
+func TestMaterializeCreatesVerificationDirectoryForEmptyCatalog(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "verification")
+	if err := Materialize(context.Background(), []Entry{}, output, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("verification output is not a directory: %s", output)
+	}
+}
+
 func TestCompareManifestRejectsUnknownOrChangedOutput(t *testing.T) {
 	expected := validEntry("sample", "1.0.0", time.Now().UTC()).Version.Manifest
 	actual, err := json.Marshal(expected)
