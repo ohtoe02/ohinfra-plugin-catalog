@@ -1,0 +1,34 @@
+name: storage-base
+description: Filesystem capacity and usage diagnostics for ohinfra.
+homepage: https://github.com/ohtoe02/ohinfra-plugins
+version:
+  version: 1.0.0
+  minimum_ohinfra_version: 0.3.0
+  published_at: 2026-07-24T18:16:38Z
+  yanked: false
+  manifest:
+    protocol_version: 1
+    name: storage-base
+    version: 1.0.0
+    description: Filesystem capacity and usage diagnostics for ohinfra.
+    commands:
+      - path: [disk, usage]
+        use: usage [path]
+        short: Show filesystem usage
+        category: diagnostic
+        arguments:
+          - name: path
+            description: Path used to select a filesystem
+            required: false
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+  assets:
+    - os: linux
+      arch: amd64
+      url: https://github.com/ohtoe02/ohinfra-plugins/releases/download/storage-base-v1.0.0/storage-base_linux_amd64
+      sha256: 4af1e28f7511c9953858830c0ee61a82485f5cab90625c8f3aaffb8df4ca3de2
+      size_bytes: 2990242

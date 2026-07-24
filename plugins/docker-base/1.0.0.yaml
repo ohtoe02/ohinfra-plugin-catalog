@@ -1,0 +1,180 @@
+name: docker-base
+description: Docker Engine and Compose diagnostics for ohinfra.
+homepage: https://github.com/ohtoe02/ohinfra-plugins
+version:
+  version: 1.0.0
+  minimum_ohinfra_version: 0.3.0
+  published_at: 2026-07-24T18:17:09Z
+  yanked: false
+  manifest:
+    protocol_version: 1
+    name: docker-base
+    version: 1.0.0
+    description: Docker Engine and Compose diagnostics for ohinfra.
+    commands:
+      - path: [docker, status]
+        use: status
+        short: Check Docker client and daemon availability
+        category: diagnostic
+        arguments: []
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [docker, info]
+        use: info
+        short: Show Docker daemon information
+        category: diagnostic
+        arguments: []
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [docker, ps]
+        use: ps
+        short: List Docker containers
+        category: diagnostic
+        arguments: []
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [docker, usage]
+        use: usage
+        short: Show Docker disk usage
+        category: diagnostic
+        arguments: []
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [docker, logs]
+        use: logs <container>
+        short: Show redacted container logs
+        category: diagnostic
+        arguments:
+          - name: container
+            description: Container name or ID
+            required: true
+            variadic: false
+        flags:
+          - name: since
+            type: duration
+            description: Log lookback duration
+            default: 1h0m0s
+          - name: lines
+            type: int
+            description: Maximum log lines
+            default: 200
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [docker, inspect]
+        use: inspect <object>
+        short: Inspect a Docker object
+        category: diagnostic
+        arguments:
+          - name: object
+            description: Docker object identifier
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [docker, health]
+        use: health <container>
+        short: Show container health state
+        category: diagnostic
+        arguments:
+          - name: container
+            description: Container name or ID
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [docker, registry-test]
+        use: registry-test <registry>
+        short: Test anonymous registry v2 access
+        category: diagnostic
+        arguments:
+          - name: registry
+            description: HTTPS registry host or URL
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [compose, find]
+        use: find [path]
+        short: Find Compose files without following symlinks
+        category: diagnostic
+        arguments:
+          - name: path
+            description: Search root
+            required: false
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [compose, validate]
+        use: validate <file>
+        short: Validate a Compose file
+        category: diagnostic
+        arguments:
+          - name: file
+            description: Compose YAML file
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [compose, inspect]
+        use: inspect <file>
+        short: Render the normalized Compose model
+        category: diagnostic
+        arguments:
+          - name: file
+            description: Compose YAML file
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [compose, diff]
+        use: diff <file>
+        short: Compare Compose model with running services
+        category: diagnostic
+        arguments:
+          - name: file
+            description: Compose YAML file
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+  assets:
+    - os: linux
+      arch: amd64
+      url: https://github.com/ohtoe02/ohinfra-plugins/releases/download/docker-base-v1.0.0/docker-base_linux_amd64
+      sha256: 010f337a00959521819233302fb1d53c21faa707b4bf708cde9f094ba08a8543
+      size_bytes: 6906018

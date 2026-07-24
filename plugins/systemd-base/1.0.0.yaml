@@ -1,0 +1,70 @@
+name: systemd-base
+description: Systemd service status, logs, and controlled restart operations for ohinfra.
+homepage: https://github.com/ohtoe02/ohinfra-plugins
+version:
+  version: 1.0.0
+  minimum_ohinfra_version: 0.3.0
+  published_at: 2026-07-24T18:16:59Z
+  yanked: false
+  manifest:
+    protocol_version: 1
+    name: systemd-base
+    version: 1.0.0
+    description: Systemd service status, logs, and controlled restart operations for ohinfra.
+    commands:
+      - path: [service, status]
+        use: status <unit>
+        short: Show stable systemd unit properties
+        category: diagnostic
+        arguments:
+          - name: unit
+            description: Systemd unit name
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [service, logs]
+        use: logs <unit>
+        short: Show redacted systemd journal entries
+        category: diagnostic
+        arguments:
+          - name: unit
+            description: Systemd unit name
+            required: true
+            variadic: false
+        flags:
+          - name: since
+            type: duration
+            description: Journal lookback duration
+            default: 1h0m0s
+          - name: lines
+            type: int
+            description: Maximum journal lines
+            default: 200
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [service, restart]
+        use: restart <unit>
+        short: Restart and verify a systemd unit
+        category: operational
+        arguments:
+          - name: unit
+            description: Systemd unit name
+            required: true
+            variadic: false
+        flags: []
+        requires_root: true
+        requires_force: false
+        supports_dry_run: true
+        requires_confirmation: true
+  assets:
+    - os: linux
+      arch: amd64
+      url: https://github.com/ohtoe02/ohinfra-plugins/releases/download/systemd-base-v1.0.0/systemd-base_linux_amd64
+      sha256: cc183802259dda08626b0dde1d3893665b03298fe58dab9b2f5744be7ff1d3eb
+      size_bytes: 3215522
