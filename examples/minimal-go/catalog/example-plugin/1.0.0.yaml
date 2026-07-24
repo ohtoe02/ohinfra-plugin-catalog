@@ -1,0 +1,55 @@
+# Copy this file to plugins/example-plugin/1.0.0.yaml only after replacing
+# every YOUR-* placeholder, size_bytes, sha256, homepage, and published_at.
+name: example-plugin
+description: Minimal reference implementation for ohinfra plugin protocol v1
+homepage: https://github.com/YOUR-ORG/example-plugin
+version:
+  version: 1.0.0
+  minimum_ohinfra_version: 0.2.0
+  published_at: 2026-07-24T12:00:00Z
+  yanked: false
+  manifest:
+    protocol_version: 1
+    name: example-plugin
+    version: 1.0.0
+    description: Minimal reference implementation for ohinfra plugin protocol v1
+    commands:
+      - path: [example, echo]
+        use: echo <text>
+        short: Echo text through plugin protocol v1
+        category: diagnostic
+        arguments:
+          - name: text
+            description: Text to echo
+            required: true
+            variadic: false
+        flags:
+          - name: uppercase
+            type: bool
+            description: Convert the echoed text to uppercase
+            default: false
+        requires_root: false
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+      - path: [example, write]
+        use: write <text>
+        short: Write a message under /tmp/ohinfra-example
+        category: operational
+        arguments:
+          - name: text
+            description: Message to write
+            required: true
+            variadic: false
+        flags: []
+        requires_root: false
+        requires_force: false
+        supports_dry_run: true
+        requires_confirmation: true
+  assets:
+    - os: linux
+      arch: amd64
+      url: https://github.com/YOUR-ORG/example-plugin/releases/download/v1.0.0/example-plugin_linux_amd64
+      sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+      size_bytes: 1
+

@@ -1,0 +1,11 @@
+{
+  "protocol_version": 1,
+  "request_id": "example-request-1",
+  "command_path": ["example", "echo"],
+  "arguments": ["hello"],
+  "options": {
+    "uppercase": true
+  },
+  "deadline": "2026-07-24T12:00:00Z"
+}
+

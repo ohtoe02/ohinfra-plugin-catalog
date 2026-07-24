@@ -1,0 +1,37 @@
+version: 2
+
+project_name: example-plugin
+
+builds:
+  - id: plugin
+    main: .
+    binary: example-plugin
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -buildvcs=false
+      - -trimpath
+    ldflags:
+      - >-
+        -s -w
+        -X main.version={{ .Version }}
+
+archives:
+  - id: binary
+    ids:
+      - plugin
+    formats:
+      - binary
+    name_template: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  disable: true
