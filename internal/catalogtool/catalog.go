@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 const SchemaVersion = "1"
@@ -28,7 +30,7 @@ type Index struct {
 
 type Entry struct {
 	Name        string        `yaml:"name"`
-	Description string        `yaml:"description"`
+	Description string        `yaml:"description,omitempty"`
 	Homepage    string        `yaml:"homepage,omitempty"`
 	Version     PluginVersion `yaml:"version"`
 }
@@ -185,6 +187,9 @@ func ValidateEntry(entry Entry) error {
 	if !identifier.MatchString(entry.Name) {
 		return fmt.Errorf("invalid plugin name %q", entry.Name)
 	}
+	if err := validateDescription(entry.Description); err != nil {
+		return fmt.Errorf("plugin description: %w", err)
+	}
 	if _, err := stableVersion(entry.Version.Version); err != nil {
 		return err
 	}
@@ -198,6 +203,9 @@ func ValidateEntry(entry Entry) error {
 	if manifest.ProtocolVersion != 1 || manifest.Name != entry.Name ||
 		manifest.Version != entry.Version.Version || len(manifest.Commands) == 0 {
 		return errors.New("manifest identity or protocol is invalid")
+	}
+	if manifest.Description != entry.Description {
+		return errors.New("catalog description must exactly match manifest description")
 	}
 	for _, command := range manifest.Commands {
 		if len(command.Path) < 2 {
@@ -238,6 +246,27 @@ func ValidateEntry(entry Entry) error {
 		parsed, err := url.Parse(asset.URL)
 		if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
 			return errors.New("asset URL must use credential-free HTTPS")
+		}
+	}
+	return nil
+}
+
+func validateDescription(value string) error {
+	if value == "" {
+		return nil
+	}
+	if !utf8.ValidString(value) {
+		return errors.New("description must be valid UTF-8")
+	}
+	if len(value) > 512 {
+		return errors.New("description exceeds 512 bytes")
+	}
+	if strings.TrimSpace(value) != value {
+		return errors.New("description must not have surrounding whitespace")
+	}
+	for _, character := range value {
+		if unicode.IsControl(character) {
+			return errors.New("description must be one line without control characters")
 		}
 	}
 	return nil
