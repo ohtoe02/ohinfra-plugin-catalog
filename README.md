@@ -7,6 +7,23 @@ Ed25519-signed snapshots published as immutable GitHub Release assets.
 The initial catalog is intentionally empty. Plugin publishers add one strict
 YAML entry per version under `plugins/<name>/<version>.yaml`.
 
+## Documentation
+
+- [Author a plugin](docs/plugin-authoring.md) — project structure, implementation,
+  security, release, and submission workflow.
+- [Executable protocol v1](docs/protocol-v1.md) — complete manifest, invocation,
+  plan, and Result JSON syntax.
+- [Catalog entry reference](docs/catalog-entry.md) — strict YAML fields,
+  immutable asset rules, and a complete entry.
+- [Validation guide](docs/validation.md) — local checks, sandboxed CI, common
+  failures, and the signing boundary.
+- [Minimal Go plugin](examples/minimal-go/README.md) — a standalone, tested
+  project with all important build, release, fixture, and catalog files.
+
+Start by copying the minimal project, then follow the authoring guide. The
+example catalog entry remains outside `plugins/` and is never published as a
+production entry.
+
 ## Validate a contribution
 
 ```bash
@@ -19,6 +36,8 @@ Pull-request CI downloads each declared `linux/amd64` asset, verifies its size
 and SHA-256, then executes only its `manifest` verb in a non-root, read-only,
 networkless container. Publishing and signing happen in a separate protected
 workflow.
+
+See the [validation guide](docs/validation.md) before opening a pull request.
 
 ## Published files
 

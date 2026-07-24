@@ -22,6 +22,24 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: go run ./cmd/catalogctl validate --plugins plugins
+      - name: Test the plugin authoring example
+        working-directory: examples/minimal-go
+        run: go test -race ./...
+      - name: Vet the plugin authoring example
+        working-directory: examples/minimal-go
+        run: go vet ./...
+      - name: Build the static plugin authoring example
+        working-directory: examples/minimal-go
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: >-
+          go build
+          -buildvcs=false
+          -trimpath
+          -o "$RUNNER_TEMP/example-plugin_linux_amd64"
+          .
 
   verify-assets:
     runs-on: ubuntu-latest
