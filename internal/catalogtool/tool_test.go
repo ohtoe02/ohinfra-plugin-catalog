@@ -51,6 +51,17 @@ func TestValidateRejectsPrereleaseHTTPAndManifestMismatch(t *testing.T) {
 		"prerelease": func(entry *Entry) { entry.Version.Version = "1.0.0-rc.1" },
 		"http":       func(entry *Entry) { entry.Version.Assets[0].URL = "http://example.com/plugin" },
 		"identity":   func(entry *Entry) { entry.Version.Manifest.Version = "9.9.9" },
+		"description mismatch": func(entry *Entry) {
+			entry.Version.Manifest.Description = "different"
+		},
+		"description newline": func(entry *Entry) {
+			entry.Description = "two\nlines"
+			entry.Version.Manifest.Description = "two\nlines"
+		},
+		"description too long": func(entry *Entry) {
+			entry.Description = strings.Repeat("x", 513)
+			entry.Version.Manifest.Description = entry.Description
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			entry := validEntry("sample", "1.0.0", now)
@@ -116,6 +127,7 @@ version:
     protocol_version: 1
     name: sample
     version: 1.0.0
+    description: sample plugin
     commands:
       - path: [sample, run]
         use: run
@@ -221,6 +233,7 @@ func validEntry(name, version string, published time.Time) Entry {
 			Version: version, MinimumOHInfraVersion: "0.2.0", PublishedAt: published,
 			Manifest: Manifest{
 				ProtocolVersion: 1, Name: name, Version: version,
+				Description: name + " plugin",
 				Commands: []Command{{
 					Path: []string{name, "run"}, Category: "diagnostic",
 					Arguments: []Argument{}, Flags: []Flag{},
