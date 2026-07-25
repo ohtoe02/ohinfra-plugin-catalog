@@ -614,6 +614,117 @@ func TestMaterializeVerifiesAssetAndWritesExpectedManifest(t *testing.T) {
 	}
 }
 
+func TestSecureHTTPClientAllowsSignedGitHubAssetRedirectWithoutForwardingHeaders(t *testing.T) {
+	const (
+		initialPath  = "/ohtoe02/ohtools-plugins/releases/download/sample-v1.0.0/sample_linux_amd64"
+		redirectPath = "/release-asset?sp=r&sig=signed-value"
+	)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case initialPath:
+			http.Redirect(
+				response,
+				request,
+				"https://release-assets.githubusercontent.com"+redirectPath,
+				http.StatusFound,
+			)
+		case "/release-asset":
+			for _, name := range []string{
+				"Authorization",
+				"Cookie",
+				"Proxy-Authorization",
+				"X-API-Key",
+			} {
+				if value := request.Header.Get(name); value != "" {
+					t.Errorf("redirect forwarded %s=%q", name, value)
+				}
+			}
+			response.WriteHeader(http.StatusOK)
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+
+	target, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := server.Client()
+	base.Transport = rewriteRoundTripper{target: target, base: base.Transport}
+	client := secureHTTPClient(
+		base,
+		[]string{
+			"github.com",
+			"release-assets.githubusercontent.com",
+			"objects.githubusercontent.com",
+		},
+	)
+	request, err := http.NewRequest(
+		http.MethodGet,
+		"https://github.com"+initialPath,
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Authorization", "Bearer secret")
+	request.Header.Set("Cookie", "session=secret")
+	request.Header.Set("Proxy-Authorization", "Basic secret")
+	request.Header.Set("X-API-Key", "secret")
+	response, err := client.Do(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status=%d, want %d", response.StatusCode, http.StatusOK)
+	}
+}
+
+func TestSecureHTTPClientRejectsUnsafeRedirectTargets(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{
+			name: "query on source host",
+			url:  "https://github.com/ohtoe02/ohtools-plugins/releases/download/v1/plugin?sig=value",
+		},
+		{
+			name: "credentials",
+			url:  "https://user:secret@release-assets.githubusercontent.com/asset?sig=value",
+		},
+		{
+			name: "untrusted host",
+			url:  "https://example.com/asset?sig=value",
+		},
+		{
+			name: "insecure transport",
+			url:  "http://release-assets.githubusercontent.com/asset?sig=value",
+		},
+	}
+	client := secureHTTPClient(
+		nil,
+		[]string{
+			"github.com",
+			"release-assets.githubusercontent.com",
+			"objects.githubusercontent.com",
+		},
+	)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			request, err := http.NewRequest(http.MethodGet, test.url, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := client.CheckRedirect(request, []*http.Request{{}}); err == nil {
+				t.Fatalf("redirect %q accepted", test.url)
+			}
+		})
+	}
+}
+
 type rewriteRoundTripper struct {
 	target *url.URL
 	base   http.RoundTripper
