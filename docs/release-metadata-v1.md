@@ -59,10 +59,20 @@ Import with:
 go run ./cmd/catalogctl import-release \
   --metadata release-metadata-v1.json \
   --binary example-plugin_linux_amd64 \
+  --sandbox-runtime /usr/bin/docker \
   --plugins plugins
 ```
 
 The importer reads regular non-symlink files, validates the exact binary, and
-creates `plugins/<name>/<version>.yaml`. It never replaces an existing entry.
-Review, materialization, sandboxed manifest comparison, and protected signing
-remain required.
+copies those verified bytes into an isolated bind mount before invoking
+`manifest --protocol=1` through the local Docker runtime. The production path
+is fail-closed: `/usr/bin/docker` and the preloaded `debian:13-slim` image must
+be available. The container has no network, runs non-root with a read-only
+filesystem, all capabilities dropped, `no-new-privileges`, and bounded CPU,
+memory, process count, output, and runtime. A timeout triggers explicit
+container cleanup.
+
+The emitted manifest must exactly match the sidecar. The importer then creates
+`plugins/<name>/<version>.yaml` with atomic create-if-absent semantics and never
+replaces an existing entry. Review, materialization, independent CI sandbox
+comparison, and protected signing remain required.

@@ -174,6 +174,12 @@ func run(
 		metadata := flags.String("metadata", "", "release-metadata-v1.json sidecar")
 		binary := flags.String("binary", "", "exact release binary")
 		plugins := flags.String("plugins", "plugins", "catalog entries directory")
+		defaultSandbox := catalogtool.DefaultDockerManifestSandbox()
+		sandboxRuntime := flags.String(
+			"sandbox-runtime",
+			defaultSandbox.RuntimePath,
+			"absolute trusted Docker CLI path",
+		)
 		if err := flags.Parse(arguments[1:]); err != nil {
 			return 2
 		}
@@ -181,7 +187,15 @@ func run(
 			_, _ = fmt.Fprintln(stderr, "metadata and binary are required")
 			return 2
 		}
-		output, err := catalogtool.ImportRelease(*metadata, *binary, *plugins)
+		output, err := catalogtool.ImportReleaseWithSandbox(
+			*metadata,
+			*binary,
+			*plugins,
+			catalogtool.DockerManifestSandbox{
+				RuntimePath: *sandboxRuntime,
+				Image:       defaultSandbox.Image,
+			},
+		)
 		if err != nil {
 			_, _ = fmt.Fprintln(stderr, err)
 			return 1

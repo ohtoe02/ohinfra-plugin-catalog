@@ -217,6 +217,10 @@ dry-run or confirmation, serializes the approved plan as JSON, and computes its
 SHA-256. The `execute` Invocation carries that lowercase hexadecimal digest.
 Canonical digest byte fixtures are published in
 [`contracts/protocol-v1/conformance/plan-digest.json`](../contracts/protocol-v1/conformance/plan-digest.json).
+Their normative `ohtools-plan-json-v1` encoding is defined in the contract
+bundle README. It preserves protocol v1 compatibility and is intentionally not
+RFC 8785; implementations must follow the documented field order, recursive
+object-key ordering, string escaping, and number encoding.
 
 A plugin that verifies the digest must recreate the exact effective plan. The
 safest pattern is to return the same `requires_root`, `requires_force`, and

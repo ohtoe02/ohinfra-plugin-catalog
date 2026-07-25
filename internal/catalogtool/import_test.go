@@ -1,23 +1,26 @@
 package catalogtool
 
 import (
+	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
 func TestImportReleaseWritesDeterministicValidatedEntry(t *testing.T) {
 	root := t.TempDir()
-	binary := filepath.Join(root, "plugin")
-	content := []byte("immutable plugin bytes")
-	if err := os.WriteFile(binary, content, 0o700); err != nil {
-		t.Fatal(err)
-	}
+	binary, content := buildReleaseFixture(t, root)
 	sum := sha256.Sum256(content)
 	metadata := ReleaseMetadata{
 		SchemaVersion:         "1",
@@ -84,7 +87,12 @@ func TestImportReleaseWritesDeterministicValidatedEntry(t *testing.T) {
 	}
 	plugins := filepath.Join(root, "plugins")
 
-	output, err := ImportRelease(sidecar, binary, plugins)
+	output, err := ImportReleaseWithSandbox(
+		sidecar,
+		binary,
+		plugins,
+		trustedFixtureSandbox{},
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +108,12 @@ func TestImportReleaseWritesDeterministicValidatedEntry(t *testing.T) {
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("entries=%#v error=%v", entries, err)
 	}
-	if _, err := ImportRelease(sidecar, binary, plugins); err == nil ||
+	if _, err := ImportReleaseWithSandbox(
+		sidecar,
+		binary,
+		plugins,
+		trustedFixtureSandbox{},
+	); err == nil ||
 		!strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("overwrite error = %v", err)
 	}
@@ -110,6 +123,182 @@ func TestImportReleaseWritesDeterministicValidatedEntry(t *testing.T) {
 	}
 	if string(first) != string(second) {
 		t.Fatal("failed overwrite changed catalog entry")
+	}
+}
+
+func TestImportReleaseRejectsManifestThatDoesNotMatchBinary(t *testing.T) {
+	root := t.TempDir()
+	binary, content := buildReleaseFixture(t, root)
+	metadata := releaseFixtureMetadata(content)
+	metadata.Manifest.Commands[0].Short = "Different but otherwise valid manifest"
+	sidecar := writeReleaseSidecar(t, root, metadata)
+
+	if _, err := ImportReleaseWithSandbox(
+		sidecar,
+		binary,
+		filepath.Join(root, "plugins"),
+		trustedFixtureSandbox{},
+	); err == nil || !strings.Contains(err.Error(), "manifest") {
+		t.Fatalf("manifest mismatch error = %v", err)
+	}
+}
+
+func TestImportReleaseFailsClosedWithoutSandbox(t *testing.T) {
+	root := t.TempDir()
+	binary, content := buildReleaseFixture(t, root)
+	sidecar := writeReleaseSidecar(t, root, releaseFixtureMetadata(content))
+
+	if _, err := ImportReleaseWithSandbox(
+		sidecar,
+		binary,
+		filepath.Join(root, "plugins"),
+		nil,
+	); err == nil || !strings.Contains(err.Error(), "sandbox is required") {
+		t.Fatalf("missing sandbox error = %v", err)
+	}
+}
+
+func TestDockerManifestSandboxUsesRestrictedContainerAndExactBytes(t *testing.T) {
+	root := t.TempDir()
+	runtimePath := buildTestCommand(t, root, "./testdata/fakedocker", "fakedocker")
+	sandbox := DockerManifestSandbox{
+		RuntimePath: runtimePath,
+		Image:       dockerSandboxImage,
+
+		allowUntrustedRuntime: true,
+	}
+
+	actual, err := sandbox.Manifest(context.Background(), []byte("verified release bytes"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := releaseFixtureMetadata([]byte("unused")).Manifest
+	if err := CompareManifest(expected, actual); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDockerManifestSandboxBoundsTimeAndOutput(t *testing.T) {
+	root := t.TempDir()
+	runtimePath := buildTestCommand(t, root, "./testdata/fakedocker", "fakedocker")
+	sandbox := DockerManifestSandbox{
+		RuntimePath: runtimePath,
+		Image:       dockerSandboxImage,
+
+		allowUntrustedRuntime: true,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	if _, err := sandbox.Manifest(ctx, []byte("timeout release bytes")); err == nil ||
+		!strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("timeout error = %v", err)
+	}
+	outputContext, outputCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer outputCancel()
+	started := time.Now()
+	if _, err := sandbox.Manifest(
+		outputContext,
+		[]byte("oversized release bytes"),
+	); err == nil || !strings.Contains(err.Error(), "stdout exceeds") {
+		t.Fatalf("output limit error = %v", err)
+	}
+	if elapsed := time.Since(started); elapsed >= time.Second {
+		t.Fatalf("output overflow cancellation took %s", elapsed)
+	}
+}
+
+func TestCommitNewFileNoReplaceIsAtomicUnderConcurrency(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "entry.yaml")
+	const contenders = 32
+	start := make(chan struct{})
+	results := make(chan error, contenders)
+	var wait sync.WaitGroup
+	for index := range contenders {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			staged := filepath.Join(root, "stage-"+strconv.Itoa(index))
+			if err := os.WriteFile(staged, []byte{byte(index)}, 0o600); err != nil {
+				results <- err
+				return
+			}
+			<-start
+			results <- commitNewFileNoReplace(staged, target)
+		}()
+	}
+	close(start)
+	wait.Wait()
+	close(results)
+
+	successes := 0
+	conflicts := 0
+	for err := range results {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, os.ErrExist):
+			conflicts++
+		default:
+			t.Fatalf("unexpected commit error: %v", err)
+		}
+	}
+	if successes != 1 || conflicts != contenders-1 {
+		t.Fatalf("successes=%d conflicts=%d", successes, conflicts)
+	}
+}
+
+func TestImportReleaseHasExactlyOneConcurrentWinner(t *testing.T) {
+	root := t.TempDir()
+	content := []byte("concurrent release bytes")
+	binary := filepath.Join(root, "plugin")
+	if err := os.WriteFile(binary, content, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	metadata := releaseFixtureMetadata(content)
+	sidecar := writeReleaseSidecar(t, root, metadata)
+	actual, err := json.Marshal(metadata.Manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plugins := filepath.Join(root, "plugins")
+	const contenders = 32
+	start := make(chan struct{})
+	results := make(chan error, contenders)
+	var wait sync.WaitGroup
+	for range contenders {
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			<-start
+			_, importErr := ImportReleaseWithSandbox(
+				sidecar,
+				binary,
+				plugins,
+				staticManifestSandbox(actual),
+			)
+			results <- importErr
+		}()
+	}
+	close(start)
+	wait.Wait()
+	close(results)
+
+	successes := 0
+	conflicts := 0
+	for importErr := range results {
+		switch {
+		case importErr == nil:
+			successes++
+		case strings.Contains(importErr.Error(), "already exists"):
+			conflicts++
+		default:
+			t.Fatalf("unexpected concurrent import error: %v", importErr)
+		}
+	}
+	if successes != 1 || conflicts != contenders-1 {
+		t.Fatalf("successes=%d conflicts=%d", successes, conflicts)
 	}
 }
 
@@ -172,4 +361,99 @@ func TestImportReleaseRejectsSymlinkInput(t *testing.T) {
 	if _, err := ImportRelease(link, target, filepath.Join(root, "plugins")); err == nil {
 		t.Fatal("symlink sidecar accepted")
 	}
+}
+
+func buildReleaseFixture(t *testing.T, root string) (string, []byte) {
+	t.Helper()
+	binary := buildTestCommand(t, root, "./testdata/releasefixture", "releasefixture")
+	content, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return binary, content
+}
+
+func buildTestCommand(t *testing.T, root, packagePath, name string) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	binary := filepath.Join(root, name)
+	command := exec.Command("go", "build", "-trimpath", "-o", binary, packagePath)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build %s: %v\n%s", packagePath, err, output)
+	}
+	return binary
+}
+
+func releaseFixtureMetadata(content []byte) ReleaseMetadata {
+	sum := sha256.Sum256(content)
+	return ReleaseMetadata{
+		SchemaVersion:         "1",
+		Name:                  "sample",
+		Description:           "sample plugin",
+		Homepage:              "https://github.com/example/sample",
+		Version:               "1.2.3",
+		MinimumOHToolsVersion: "0.3.3",
+		PublishedAt:           time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC),
+		Asset: Asset{
+			OS: "linux", Arch: "amd64",
+			URL:       "https://github.com/example/sample/releases/download/v1.2.3/sample",
+			SHA256:    hex.EncodeToString(sum[:]),
+			SizeBytes: int64(len(content)),
+		},
+		Manifest: Manifest{
+			ProtocolVersion: 1,
+			Name:            "sample",
+			Version:         "1.2.3",
+			Description:     "sample plugin",
+			Commands: []Command{{
+				Path: []string{"sample", "status"}, Use: "status",
+				Short: "Show sample status", Category: "diagnostic",
+				Arguments: []Argument{}, Flags: []Flag{},
+			}},
+		},
+	}
+}
+
+func writeReleaseSidecar(t *testing.T, root string, metadata ReleaseMetadata) string {
+	t.Helper()
+	encoded, err := json.Marshal(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sidecar := filepath.Join(root, "release-metadata-v1.json")
+	if err := os.WriteFile(sidecar, encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return sidecar
+}
+
+type trustedFixtureSandbox struct{}
+
+func (trustedFixtureSandbox) Manifest(ctx context.Context, binary []byte) ([]byte, error) {
+	directory, err := os.MkdirTemp("", "ohtools-trusted-fixture-*")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = os.RemoveAll(directory) }()
+	name := "plugin"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	path := filepath.Join(directory, name)
+	if err := os.WriteFile(path, binary, 0o700); err != nil {
+		return nil, err
+	}
+	command := exec.CommandContext(ctx, path, "manifest", "--protocol=1")
+	command.Dir = directory
+	command.Env = []string{}
+	command.Stdin = bytes.NewReader(nil)
+	return command.Output()
+}
+
+type staticManifestSandbox []byte
+
+func (sandbox staticManifestSandbox) Manifest(context.Context, []byte) ([]byte, error) {
+	return append([]byte(nil), sandbox...), nil
 }

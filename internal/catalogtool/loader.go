@@ -144,6 +144,16 @@ func validateEntryYAMLPresence(encoded []byte) error {
 		); err != nil {
 			return err
 		}
+		for flagIndex, flag := range flags.Content {
+			if value, present := yamlMappingValue(flag, "default"); present &&
+				value.Tag == "!!null" {
+				return fmt.Errorf(
+					"%s.flags[%d].default must be omitted instead of null",
+					context,
+					flagIndex,
+				)
+			}
+		}
 	}
 	assets, _ := yamlMappingValue(version, "assets")
 	if err := requireYAMLSequenceFields(

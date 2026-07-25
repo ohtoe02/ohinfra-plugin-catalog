@@ -158,6 +158,9 @@ func TestProtocolContractBundleIsCompleteAndChecksummed(t *testing.T) {
 		"plan.schema.json",
 		"conformance/manifest-valid.json",
 		"conformance/manifest-invalid.json",
+		"conformance/manifest-semantics.json",
+		"conformance/invocation-valid.json",
+		"conformance/invocation-invalid.json",
 		"conformance/plan-digest.json",
 		"conformance/exit-behavior.json",
 	}
@@ -206,18 +209,167 @@ func TestProtocolContractBundleIsCompleteAndChecksummed(t *testing.T) {
 		})
 	}
 	var digestVectors struct {
-		Cases []struct {
+		Canonicalization string `json:"canonicalization"`
+		Cases            []struct {
 			Name          string `json:"name"`
 			CanonicalJSON string `json:"canonical_json"`
 			SHA256        string `json:"sha256"`
 		} `json:"cases"`
 	}
 	readJSONFile(t, filepath.Join(root, "conformance", "plan-digest.json"), &digestVectors)
+	if digestVectors.Canonicalization != "ohtools-plan-json-v1" {
+		t.Fatalf("canonicalization = %q", digestVectors.Canonicalization)
+	}
 	for _, vector := range digestVectors.Cases {
+		canonical, err := CanonicalPlanJSON([]byte(vector.CanonicalJSON))
+		if err != nil {
+			t.Fatalf("%s canonicalize: %v", vector.Name, err)
+		}
+		if string(canonical) != vector.CanonicalJSON {
+			t.Errorf("%s canonical bytes changed:\n%s", vector.Name, canonical)
+		}
 		sum := sha256.Sum256([]byte(vector.CanonicalJSON))
 		if got := hex.EncodeToString(sum[:]); got != vector.SHA256 {
 			t.Errorf("%s digest=%s want=%s", vector.Name, got, vector.SHA256)
 		}
+	}
+}
+
+func TestManifestSemanticConformanceVectors(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", "..", "contracts", "protocol-v1"))
+	var vectors struct {
+		SchemaVersion string `json:"schema_version"`
+		HelpTextCases []struct {
+			Name          string `json:"name"`
+			Unit          string `json:"unit"`
+			Repeat        int    `json:"repeat"`
+			Valid         bool   `json:"valid"`
+			ErrorContains string `json:"error_contains"`
+		} `json:"help_text_cases"`
+		FlagDefaultCases []struct {
+			Name          string `json:"name"`
+			Type          string `json:"type"`
+			Default       any    `json:"default"`
+			Valid         bool   `json:"valid"`
+			ErrorContains string `json:"error_contains"`
+		} `json:"flag_default_cases"`
+	}
+	readJSONFile(t, filepath.Join(root, "conformance", "manifest-semantics.json"), &vectors)
+	if vectors.SchemaVersion != "1" || len(vectors.HelpTextCases) == 0 ||
+		len(vectors.FlagDefaultCases) == 0 {
+		t.Fatalf("invalid semantic vectors: %#v", vectors)
+	}
+	for _, vector := range vectors.HelpTextCases {
+		t.Run("help/"+vector.Name, func(t *testing.T) {
+			entry := validEntry("sample", "1.0.0", time.Unix(1, 0).UTC())
+			entry.Version.Manifest.Commands[0].Short = strings.Repeat(vector.Unit, vector.Repeat)
+			assertVectorValidity(t, ValidateEntry(entry), vector.Valid, vector.ErrorContains)
+		})
+	}
+	for _, vector := range vectors.FlagDefaultCases {
+		t.Run("default/"+vector.Name, func(t *testing.T) {
+			entry := validEntry("sample", "1.0.0", time.Unix(1, 0).UTC())
+			entry.Version.Manifest.Commands[0].Flags = []Flag{{
+				Name: "mode", Type: vector.Type, Default: vector.Default,
+			}}
+			assertVectorValidity(t, ValidateEntry(entry), vector.Valid, vector.ErrorContains)
+		})
+	}
+}
+
+func TestInvocationConformanceVectors(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", "..", "contracts", "protocol-v1"))
+	command := Command{
+		Path: []string{"example", "apply"}, Use: "apply <item>",
+		Short: "Apply one item", Category: "operational",
+		Arguments: []Argument{{Name: "item", Required: true}},
+		Flags: []Flag{
+			{Name: "mode", Type: "string", Default: "safe"},
+			{Name: "enabled", Type: "bool", Default: false},
+			{Name: "count", Type: "int", Default: 1},
+			{Name: "timeout", Type: "duration", Default: "30s"},
+		},
+		SupportsDryRun: true, RequiresConfirmation: true,
+	}
+	var valid struct {
+		SchemaVersion string `json:"schema_version"`
+		Cases         []struct {
+			Name          string `json:"name"`
+			Phase         string `json:"phase"`
+			CanonicalJSON string `json:"canonical_json"`
+		} `json:"cases"`
+	}
+	readJSONFile(t, filepath.Join(root, "conformance", "invocation-valid.json"), &valid)
+	for _, vector := range valid.Cases {
+		t.Run("valid/"+vector.Name, func(t *testing.T) {
+			if err := ValidateInvocationJSON(command, vector.Phase, []byte(vector.CanonicalJSON)); err != nil {
+				t.Fatalf("valid invocation rejected: %v", err)
+			}
+		})
+	}
+	var invalid struct {
+		SchemaVersion string `json:"schema_version"`
+		Cases         []struct {
+			Name          string `json:"name"`
+			Phase         string `json:"phase"`
+			ErrorContains string `json:"error_contains"`
+			CanonicalJSON string `json:"canonical_json"`
+		} `json:"cases"`
+	}
+	readJSONFile(t, filepath.Join(root, "conformance", "invocation-invalid.json"), &invalid)
+	for _, vector := range invalid.Cases {
+		t.Run("invalid/"+vector.Name, func(t *testing.T) {
+			err := ValidateInvocationJSON(command, vector.Phase, []byte(vector.CanonicalJSON))
+			if err == nil || !strings.Contains(strings.ToLower(err.Error()), strings.ToLower(vector.ErrorContains)) {
+				t.Fatalf("error=%v want substring %q", err, vector.ErrorContains)
+			}
+		})
+	}
+}
+
+func TestExitBehaviorConformanceVectorsExecuteReferenceMapping(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", "..", "contracts", "protocol-v1"))
+	var vectors struct {
+		SchemaVersion        string `json:"schema_version"`
+		ResultStatusExitCode []struct {
+			Status   string `json:"status"`
+			ExitCode int    `json:"exit_code"`
+		} `json:"result_status_exit_codes"`
+		ErrorKindExitCode []struct {
+			Kind     string `json:"kind"`
+			ExitCode int    `json:"exit_code"`
+		} `json:"error_kind_exit_codes"`
+		ProcessFailureKind []struct {
+			ProcessExitCode int    `json:"process_exit_code"`
+			Kind            string `json:"kind"`
+		} `json:"process_failure_kind"`
+	}
+	readJSONFile(t, filepath.Join(root, "conformance", "exit-behavior.json"), &vectors)
+	for _, vector := range vectors.ResultStatusExitCode {
+		if got := referenceResultExitCode(vector.Status, ""); got != vector.ExitCode {
+			t.Errorf("status %s exit=%d want=%d", vector.Status, got, vector.ExitCode)
+		}
+	}
+	for _, vector := range vectors.ErrorKindExitCode {
+		if got := referenceResultExitCode("error", vector.Kind); got != vector.ExitCode {
+			t.Errorf("kind %s exit=%d want=%d", vector.Kind, got, vector.ExitCode)
+		}
+	}
+	for _, vector := range vectors.ProcessFailureKind {
+		if got := referenceProcessFailureKind(vector.ProcessExitCode); got != vector.Kind {
+			t.Errorf("process exit %d kind=%s want=%s", vector.ProcessExitCode, got, vector.Kind)
+		}
+	}
+}
+
+func assertVectorValidity(t *testing.T, err error, valid bool, errorContains string) {
+	t.Helper()
+	if valid && err != nil {
+		t.Fatalf("valid vector rejected: %v", err)
+	}
+	if !valid && (err == nil ||
+		!strings.Contains(strings.ToLower(err.Error()), strings.ToLower(errorContains))) {
+		t.Fatalf("invalid vector error=%v want substring %q", err, errorContains)
 	}
 }
 
@@ -481,6 +633,21 @@ func TestCompareManifestRejectsUnknownOrChangedOutput(t *testing.T) {
 	)
 	if err := CompareManifest(expected, []byte(missingBoolean)); err == nil {
 		t.Fatal("manifest with missing required boolean accepted")
+	}
+
+	expected.Commands[0].Flags = []Flag{{Name: "mode", Type: "string"}}
+	withoutDefault, err := json.Marshal(expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	explicitNull := strings.Replace(
+		string(withoutDefault),
+		`"type":"string"`,
+		`"type":"string","default":null`,
+		1,
+	)
+	if err := CompareManifest(expected, []byte(explicitNull)); err == nil {
+		t.Fatal("manifest with explicit null flag default accepted")
 	}
 }
 

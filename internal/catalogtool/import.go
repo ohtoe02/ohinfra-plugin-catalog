@@ -2,6 +2,7 @@ package catalogtool
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -34,6 +35,20 @@ type ReleaseMetadata struct {
 }
 
 func ImportRelease(metadataPath, binaryPath, pluginsDirectory string) (string, error) {
+	return ImportReleaseWithSandbox(
+		metadataPath,
+		binaryPath,
+		pluginsDirectory,
+		DefaultDockerManifestSandbox(),
+	)
+}
+
+func ImportReleaseWithSandbox(
+	metadataPath,
+	binaryPath,
+	pluginsDirectory string,
+	sandbox ManifestSandbox,
+) (string, error) {
 	metadataBytes, err := readRegularFile(metadataPath, releaseMetadataLimit)
 	if err != nil {
 		return "", fmt.Errorf("release metadata: %w", err)
@@ -94,6 +109,29 @@ func ImportRelease(metadataPath, binaryPath, pluginsDirectory string) (string, e
 	relative, err := filepath.Rel(pluginsDirectory, output)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", errors.New("release metadata resolves outside plugins directory")
+	}
+	if err := rejectSymlinkComponents(pluginsDirectory, directory); err != nil {
+		return "", err
+	}
+	if _, err := os.Lstat(output); err == nil {
+		return "", fmt.Errorf("catalog entry %s already exists", output)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	if sandbox == nil {
+		return "", errors.New("release manifest sandbox is required")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), releaseManifestTimeout)
+	defer cancel()
+	actualManifest, err := sandbox.Manifest(ctx, binary)
+	if err != nil {
+		return "", fmt.Errorf("release binary manifest sandbox: %w", err)
+	}
+	if len(actualManifest) > releaseManifestOutputLimit {
+		return "", fmt.Errorf("release binary manifest exceeds %d bytes", releaseManifestOutputLimit)
+	}
+	if err := CompareManifest(metadata.Manifest, actualManifest); err != nil {
+		return "", fmt.Errorf("release binary manifest: %w", err)
 	}
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return "", err
@@ -202,6 +240,35 @@ func validateManifestPresence(encoded []byte) error {
 			"type",
 		); err != nil {
 			return err
+		}
+		if err := rejectExplicitNullJSONField(
+			command["flags"],
+			context+".flags",
+			"default",
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func rejectExplicitNullJSONField(
+	encoded json.RawMessage,
+	context,
+	field string,
+) error {
+	var values []json.RawMessage
+	if err := json.Unmarshal(encoded, &values); err != nil {
+		return fmt.Errorf("%s: %w", context, err)
+	}
+	for index, encodedValue := range values {
+		var value map[string]json.RawMessage
+		if err := json.Unmarshal(encodedValue, &value); err != nil {
+			return fmt.Errorf("%s[%d]: %w", context, index, err)
+		}
+		if raw, present := value[field]; present &&
+			bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+			return fmt.Errorf("%s[%d].%s must be omitted instead of null", context, index, field)
 		}
 	}
 	return nil
@@ -414,10 +481,15 @@ func writeNewFileAtomic(path string, content []byte) error {
 	if err := temp.Close(); err != nil {
 		return err
 	}
-	if _, err := os.Lstat(path); err == nil {
-		return fmt.Errorf("catalog entry %s already exists", path)
-	} else if !errors.Is(err, os.ErrNotExist) {
+	if err := commitNewFileNoReplace(tempName, path); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("catalog entry %s already exists: %w", path, os.ErrExist)
+		}
 		return err
 	}
-	return os.Rename(tempName, path)
+	return syncDirectory(directory)
+}
+
+func commitNewFileNoReplace(staged, target string) error {
+	return os.Link(staged, target)
 }

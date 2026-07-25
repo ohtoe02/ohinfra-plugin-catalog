@@ -218,12 +218,16 @@ binary. Download both files without credentials, then import them:
 go run ./cmd/catalogctl import-release \
   --metadata ./release-metadata-v1.json \
   --binary ./plugin_linux_amd64 \
+  --sandbox-runtime /usr/bin/docker \
   --plugins plugins
 ```
 
 The command strictly decodes the sidecar, rejects symlinks and credential URLs,
-checks the binary size and SHA-256, verifies manifest identity, and creates
-`plugins/<plugin-name>/<version>.yaml` without overwriting an existing entry.
+checks the binary size and SHA-256, verifies the exact manifest in the same
+restricted Docker sandbox used by CI, and creates
+`plugins/<plugin-name>/<version>.yaml` with atomic create-if-absent semantics.
+It fails closed if the trusted Docker CLI or preloaded sandbox image is
+unavailable.
 See the [release metadata reference](release-metadata-v1.md).
 
 Read the complete [catalog entry reference](catalog-entry.md), then run:
