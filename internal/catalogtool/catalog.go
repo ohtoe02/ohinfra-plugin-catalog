@@ -275,13 +275,22 @@ func ValidateEntry(entry Entry) error {
 				"asset URL must use credential-free HTTPS without query or fragment",
 			)
 		}
+		if err := validateAssetPort(parsed, "asset"); err != nil {
+			return err
+		}
 		expectedURL := fmt.Sprintf(
 			"https://github.com/ohtoe02/ohtools-plugins/releases/download/%s-v%s/%s_linux_amd64",
 			entry.Name,
 			entry.Version.Version,
 			entry.Name,
 		)
-		if asset.URL != expectedURL {
+		expectedURLWithExplicitPort := strings.Replace(
+			expectedURL,
+			"https://github.com/",
+			"https://github.com:443/",
+			1,
+		)
+		if asset.URL != expectedURL && asset.URL != expectedURLWithExplicitPort {
 			return fmt.Errorf(
 				"asset URL must be the immutable first-party release URL %q",
 				expectedURL,

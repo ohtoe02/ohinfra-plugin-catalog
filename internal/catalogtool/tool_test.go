@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -614,6 +615,38 @@ func TestMaterializeVerifiesAssetAndWritesExpectedManifest(t *testing.T) {
 	}
 }
 
+func TestMaterializeAssetRejectsNonDefaultPinnedHostPortsBeforeNetwork(t *testing.T) {
+	transport := &countingRoundTripper{}
+	client := &http.Client{Transport: transport}
+	allowedHosts := []string{
+		"github.com",
+		"release-assets.githubusercontent.com",
+		"objects.githubusercontent.com",
+	}
+	for _, host := range allowedHosts {
+		t.Run(host, func(t *testing.T) {
+			asset := Asset{
+				URL:       "https://" + host + ":444/release/plugin",
+				SizeBytes: 1,
+				SHA256:    strings.Repeat("a", 64),
+			}
+			err := materializeAsset(
+				context.Background(),
+				client,
+				allowedHosts,
+				asset,
+				filepath.Join(t.TempDir(), "plugin"),
+			)
+			if err == nil || !strings.Contains(err.Error(), `port "444"`) {
+				t.Fatalf("non-default port error = %v", err)
+			}
+			if transport.calls != 0 {
+				t.Fatalf("network called %d times before URL rejection", transport.calls)
+			}
+		})
+	}
+}
+
 func TestSecureHTTPClientAllowsSignedGitHubAssetRedirectWithoutForwardingHeaders(t *testing.T) {
 	const (
 		initialPath  = "/ohtoe02/ohtools-plugins/releases/download/sample-v1.0.0/sample_linux_amd64"
@@ -736,6 +769,15 @@ func (transport rewriteRoundTripper) RoundTrip(request *http.Request) (*http.Res
 	clone.URL.Host = transport.target.Host
 	clone.Host = transport.target.Host
 	return transport.base.RoundTrip(clone)
+}
+
+type countingRoundTripper struct {
+	calls int
+}
+
+func (transport *countingRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
+	transport.calls++
+	return nil, errors.New("unexpected network call")
 }
 
 func TestMaterializeCreatesVerificationDirectoryForEmptyCatalog(t *testing.T) {

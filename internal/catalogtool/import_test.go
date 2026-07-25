@@ -385,6 +385,63 @@ func TestImportReleaseRejectsUnsafeOrMismatchedInputs(t *testing.T) {
 	}
 }
 
+func TestImportReleaseAllowsExplicitHTTPSPort(t *testing.T) {
+	root := t.TempDir()
+	content := []byte("verified release bytes")
+	binary := filepath.Join(root, "plugin")
+	if err := os.WriteFile(binary, content, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	metadata := releaseFixtureMetadata(content)
+	metadata.Asset.URL = strings.Replace(
+		metadata.Asset.URL,
+		"https://github.com/",
+		"https://github.com:443/",
+		1,
+	)
+	manifest, err := json.Marshal(metadata.Manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ImportReleaseWithSandbox(
+		writeReleaseSidecar(t, root, metadata),
+		binary,
+		filepath.Join(root, "plugins"),
+		staticManifestSandbox(manifest),
+	); err != nil {
+		t.Fatalf("explicit HTTPS port rejected: %v", err)
+	}
+}
+
+func TestImportReleaseRejectsNonDefaultAssetPortBeforeSandbox(t *testing.T) {
+	root := t.TempDir()
+	content := []byte("verified release bytes")
+	binary := filepath.Join(root, "plugin")
+	if err := os.WriteFile(binary, content, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	metadata := releaseFixtureMetadata(content)
+	metadata.Asset.URL = strings.Replace(
+		metadata.Asset.URL,
+		"https://github.com/",
+		"https://github.com:444/",
+		1,
+	)
+	sandbox := &countingManifestSandbox{}
+	_, err := ImportReleaseWithSandbox(
+		writeReleaseSidecar(t, root, metadata),
+		binary,
+		filepath.Join(root, "plugins"),
+		sandbox,
+	)
+	if err == nil || !strings.Contains(err.Error(), `port "444"`) {
+		t.Fatalf("non-default port error = %v", err)
+	}
+	if sandbox.calls != 0 {
+		t.Fatalf("manifest sandbox called %d times before URL rejection", sandbox.calls)
+	}
+}
+
 func TestProductionImportFailsClosedOutsideLinux(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		t.Skip("production import is supported on Linux")
@@ -586,4 +643,15 @@ func (staticManifestSandbox) testOnlyManifestSandbox() {}
 
 func (sandbox staticManifestSandbox) Manifest(context.Context, []byte) ([]byte, error) {
 	return append([]byte(nil), sandbox...), nil
+}
+
+type countingManifestSandbox struct {
+	calls int
+}
+
+func (*countingManifestSandbox) testOnlyManifestSandbox() {}
+
+func (sandbox *countingManifestSandbox) Manifest(context.Context, []byte) ([]byte, error) {
+	sandbox.calls++
+	return nil, errors.New("unexpected manifest sandbox call")
 }

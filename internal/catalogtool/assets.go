@@ -186,6 +186,9 @@ func validateAssetURL(value string, allowedHosts []string) error {
 			"asset URL must use credential-free HTTPS without query or fragment",
 		)
 	}
+	if err := validateAssetPort(parsed, "asset"); err != nil {
+		return err
+	}
 	host := strings.ToLower(parsed.Hostname())
 	for _, allowed := range allowedHosts {
 		if host == strings.ToLower(allowed) {
@@ -203,8 +206,8 @@ func validateAssetRedirectURL(value string, allowedHosts []string) error {
 			"asset redirect URL must use credential-free HTTPS without fragment",
 		)
 	}
-	if port := parsed.Port(); port != "" && port != "443" {
-		return fmt.Errorf("asset redirect port %q is not allowed", port)
+	if err := validateAssetPort(parsed, "asset redirect"); err != nil {
+		return err
 	}
 	host := strings.ToLower(parsed.Hostname())
 	allowed := false
@@ -219,6 +222,13 @@ func validateAssetRedirectURL(value string, allowedHosts []string) error {
 	}
 	if parsed.RawQuery != "" && !signedGitHubAssetHost(host) {
 		return fmt.Errorf("asset redirect host %q may not use a query", host)
+	}
+	return nil
+}
+
+func validateAssetPort(parsed *url.URL, context string) error {
+	if port := parsed.Port(); port != "" && port != "443" {
+		return fmt.Errorf("%s port %q is not allowed", context, port)
 	}
 	return nil
 }
