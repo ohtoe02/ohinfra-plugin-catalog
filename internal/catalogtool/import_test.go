@@ -160,6 +160,37 @@ func TestImportReleaseFailsClosedWithoutSandbox(t *testing.T) {
 	}
 }
 
+func TestImportReleaseRejectsRawInvalidUTF8BeforeJSONDecode(t *testing.T) {
+	root := t.TempDir()
+	binary, _ := buildReleaseFixture(t, root)
+	sidecar := filepath.Join(root, "release-metadata-v1.json")
+	encoded := append([]byte(`{"schema_version":"1","description":"`), 0xff)
+	encoded = append(encoded, []byte(`"}`)...)
+	if err := os.WriteFile(sidecar, encoded, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := ImportReleaseWithSandbox(
+		sidecar,
+		binary,
+		filepath.Join(root, "plugins"),
+		staticManifestSandbox(nil),
+	)
+	if err == nil || !strings.Contains(err.Error(), "valid UTF-8") {
+		t.Fatalf("invalid UTF-8 sidecar error = %v", err)
+	}
+}
+
+func TestDuplicateFieldScannerRejectsRawInvalidUTF8(t *testing.T) {
+	encoded := append([]byte(`{"description":"`), 0xff)
+	encoded = append(encoded, []byte(`"}`)...)
+
+	if err := rejectDuplicateJSONFields(encoded); err == nil ||
+		!strings.Contains(err.Error(), "valid UTF-8") {
+		t.Fatalf("invalid UTF-8 scanner error = %v", err)
+	}
+}
+
 func TestDockerManifestSandboxUsesRestrictedContainerAndExactBytes(t *testing.T) {
 	root := t.TempDir()
 	runtimePath := buildTestCommand(t, root, "./testdata/fakedocker", "fakedocker")

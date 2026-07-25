@@ -795,6 +795,16 @@ func TestCompareManifestRejectsUnknownOrChangedOutput(t *testing.T) {
 	}
 }
 
+func TestCompareManifestRejectsRawInvalidUTF8(t *testing.T) {
+	actual := append([]byte(`{"description":"`), 0xff)
+	actual = append(actual, []byte(`"}`)...)
+
+	if err := CompareManifest(Manifest{}, actual); err == nil ||
+		!strings.Contains(err.Error(), "valid UTF-8") {
+		t.Fatalf("invalid UTF-8 manifest error = %v", err)
+	}
+}
+
 func validEntry(name, version string, published time.Time) Entry {
 	return Entry{
 		Name: name, Description: name + " plugin",

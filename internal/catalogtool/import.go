@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -306,6 +307,9 @@ func requireJSONFields(
 }
 
 func rejectDuplicateJSONFields(encoded []byte) error {
+	if !utf8.Valid(encoded) {
+		return errors.New("JSON document must be valid UTF-8")
+	}
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.UseNumber()
 	if err := inspectJSONValue(decoder); err != nil {
