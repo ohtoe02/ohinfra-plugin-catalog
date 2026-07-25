@@ -51,7 +51,13 @@ func TestValidateRejectsPrereleaseHTTPAndManifestMismatch(t *testing.T) {
 	for name, mutate := range map[string]func(*Entry){
 		"prerelease": func(entry *Entry) { entry.Version.Version = "1.0.0-rc.1" },
 		"http":       func(entry *Entry) { entry.Version.Assets[0].URL = "http://example.com/plugin" },
-		"identity":   func(entry *Entry) { entry.Version.Manifest.Version = "9.9.9" },
+		"credential query": func(entry *Entry) {
+			entry.Version.Assets[0].URL = "https://example.com/plugin?token=secret"
+		},
+		"fragment": func(entry *Entry) {
+			entry.Version.Assets[0].URL = "https://example.com/plugin#asset"
+		},
+		"identity": func(entry *Entry) { entry.Version.Manifest.Version = "9.9.9" },
 		"description mismatch": func(entry *Entry) {
 			entry.Version.Manifest.Description = "different"
 		},

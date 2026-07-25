@@ -269,8 +269,11 @@ func ValidateEntry(entry Entry) error {
 			return errors.New("asset SHA-256 is invalid")
 		}
 		parsed, err := url.Parse(asset.URL)
-		if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
-			return errors.New("asset URL must use credential-free HTTPS")
+		if err != nil || parsed.Scheme != "https" || parsed.Host == "" ||
+			parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+			return errors.New(
+				"asset URL must use credential-free HTTPS without query or fragment",
+			)
 		}
 	}
 	return nil

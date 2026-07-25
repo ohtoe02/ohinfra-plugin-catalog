@@ -171,8 +171,11 @@ func secureHTTPClient(provided *http.Client, allowedHosts []string) *http.Client
 
 func validateAssetURL(value string, allowedHosts []string) error {
 	parsed, err := url.Parse(value)
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
-		return errors.New("asset URL must use credential-free HTTPS")
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" ||
+		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New(
+			"asset URL must use credential-free HTTPS without query or fragment",
+		)
 	}
 	host := strings.ToLower(parsed.Hostname())
 	for _, allowed := range allowedHosts {
