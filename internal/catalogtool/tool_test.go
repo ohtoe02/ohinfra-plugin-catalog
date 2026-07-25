@@ -74,6 +74,200 @@ func TestValidateRejectsPrereleaseHTTPAndManifestMismatch(t *testing.T) {
 	}
 }
 
+func TestValidateEntryEnforcesProtocolCommandContract(t *testing.T) {
+	now := time.Date(2026, 7, 24, 0, 0, 0, 0, time.UTC)
+	tests := map[string]func(*Entry){
+		"use path mismatch": func(entry *Entry) {
+			entry.Version.Manifest.Commands[0].Use = "different <value>"
+		},
+		"multiline help": func(entry *Entry) {
+			entry.Version.Manifest.Commands[0].Short = "first\nsecond"
+		},
+		"duplicate command": func(entry *Entry) {
+			entry.Version.Manifest.Commands = append(
+				entry.Version.Manifest.Commands,
+				entry.Version.Manifest.Commands[0],
+			)
+		},
+		"reserved flag": func(entry *Entry) {
+			entry.Version.Manifest.Commands[0].Flags = []Flag{{
+				Name: "retry-request-id", Type: "string",
+			}}
+		},
+		"duplicate argument": func(entry *Entry) {
+			entry.Version.Manifest.Commands[0].Arguments = []Argument{
+				{Name: "value", Required: true},
+				{Name: "value", Required: true},
+			}
+		},
+		"required after optional": func(entry *Entry) {
+			entry.Version.Manifest.Commands[0].Arguments = []Argument{
+				{Name: "optional"},
+				{Name: "required", Required: true},
+			}
+		},
+		"non-terminal variadic": func(entry *Entry) {
+			entry.Version.Manifest.Commands[0].Arguments = []Argument{
+				{Name: "values", Variadic: true},
+				{Name: "after"},
+			}
+		},
+		"wrong flag default": func(entry *Entry) {
+			entry.Version.Manifest.Commands[0].Flags = []Flag{{
+				Name: "enabled", Type: "bool", Default: "true",
+			}}
+		},
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			entry := validEntry("sample", "1.0.0", now)
+			entry.Version.Manifest.Commands[0].Use = "run"
+			entry.Version.Manifest.Commands[0].Short = "Run sample diagnostics"
+			mutate(&entry)
+			if err := ValidateEntry(entry); err == nil {
+				t.Fatal("invalid protocol command accepted")
+			}
+		})
+	}
+}
+
+func TestBuildRejectsCrossPackageCommandOwnershipCollision(t *testing.T) {
+	now := time.Date(2026, 7, 24, 0, 0, 0, 0, time.UTC)
+	first := validEntry("first", "1.0.0", now)
+	second := validEntry("second", "1.0.0", now)
+	first.Version.Manifest.Commands[0].Path = []string{"shared", "status"}
+	first.Version.Manifest.Commands[0].Use = "status"
+	second.Version.Manifest.Commands[0].Path = []string{"shared", "status"}
+	second.Version.Manifest.Commands[0].Use = "status"
+
+	if _, err := Build(
+		[]Entry{first, second},
+		7,
+		now,
+		now.Add(14*24*time.Hour),
+	); err == nil || !strings.Contains(err.Error(), "owned by") {
+		t.Fatalf("collision error = %v", err)
+	}
+}
+
+func TestProtocolContractBundleIsCompleteAndChecksummed(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", "..", "contracts", "protocol-v1"))
+	required := []string{
+		"manifest.schema.json",
+		"invocation.schema.json",
+		"plan.schema.json",
+		"conformance/manifest-valid.json",
+		"conformance/manifest-invalid.json",
+		"conformance/plan-digest.json",
+		"conformance/exit-behavior.json",
+	}
+	for _, relative := range required {
+		encoded, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+		if err != nil {
+			t.Errorf("%s: %v", relative, err)
+			continue
+		}
+		var document any
+		if err := json.Unmarshal(encoded, &document); err != nil {
+			t.Errorf("%s is not JSON: %v", relative, err)
+		}
+	}
+	if err := VerifySHA256SUMS(root); err != nil {
+		t.Fatal(err)
+	}
+	var validVectors struct {
+		Cases []struct {
+			Name     string   `json:"name"`
+			Manifest Manifest `json:"manifest"`
+		} `json:"cases"`
+	}
+	readJSONFile(t, filepath.Join(root, "conformance", "manifest-valid.json"), &validVectors)
+	for _, vector := range validVectors.Cases {
+		t.Run("valid/"+vector.Name, func(t *testing.T) {
+			if err := ValidateEntry(entryForManifest(vector.Manifest)); err != nil {
+				t.Fatalf("valid vector rejected: %v", err)
+			}
+		})
+	}
+	var invalidVectors struct {
+		Cases []struct {
+			Name          string   `json:"name"`
+			ErrorContains string   `json:"error_contains"`
+			Manifest      Manifest `json:"manifest"`
+		} `json:"cases"`
+	}
+	readJSONFile(t, filepath.Join(root, "conformance", "manifest-invalid.json"), &invalidVectors)
+	for _, vector := range invalidVectors.Cases {
+		t.Run("invalid/"+vector.Name, func(t *testing.T) {
+			err := ValidateEntry(entryForManifest(vector.Manifest))
+			if err == nil || !strings.Contains(err.Error(), vector.ErrorContains) {
+				t.Fatalf("error=%v want substring %q", err, vector.ErrorContains)
+			}
+		})
+	}
+	var digestVectors struct {
+		Cases []struct {
+			Name          string `json:"name"`
+			CanonicalJSON string `json:"canonical_json"`
+			SHA256        string `json:"sha256"`
+		} `json:"cases"`
+	}
+	readJSONFile(t, filepath.Join(root, "conformance", "plan-digest.json"), &digestVectors)
+	for _, vector := range digestVectors.Cases {
+		sum := sha256.Sum256([]byte(vector.CanonicalJSON))
+		if got := hex.EncodeToString(sum[:]); got != vector.SHA256 {
+			t.Errorf("%s digest=%s want=%s", vector.Name, got, vector.SHA256)
+		}
+	}
+}
+
+func TestVerifySHA256SUMSRejectsUnlistedFiles(t *testing.T) {
+	root := t.TempDir()
+	listed := []byte("{}\n")
+	sum := sha256.Sum256(listed)
+	if err := os.WriteFile(filepath.Join(root, "listed.json"), listed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "extra.json"), []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	line := hex.EncodeToString(sum[:]) + "  listed.json\n"
+	if err := os.WriteFile(filepath.Join(root, "SHA256SUMS"), []byte(line), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifySHA256SUMS(root); err == nil ||
+		!strings.Contains(err.Error(), "not listed") {
+		t.Fatalf("unlisted file error = %v", err)
+	}
+}
+
+func readJSONFile(t *testing.T, path string, target any) {
+	t.Helper()
+	encoded, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(encoded, target); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func entryForManifest(manifest Manifest) Entry {
+	return Entry{
+		Name: manifest.Name, Description: manifest.Description,
+		Version: PluginVersion{
+			Version: manifest.Version, MinimumOHToolsVersion: "0.3.3",
+			PublishedAt: time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC),
+			Manifest:    manifest,
+			Assets: []Asset{{
+				OS: "linux", Arch: "amd64",
+				URL:    "https://github.com/example/plugin/releases/download/v1.0.0/plugin",
+				SHA256: strings.Repeat("a", 64), SizeBytes: 1,
+			}},
+		},
+	}
+}
+
 func TestSignProducesRotatableEd25519Envelope(t *testing.T) {
 	_, first, err := ed25519.GenerateKey(nil)
 	if err != nil {
@@ -162,6 +356,46 @@ version:
 	}
 }
 
+func TestLoadEntriesRejectsMissingManifestCommandFields(t *testing.T) {
+	dir := t.TempDir()
+	entry := `name: sample
+description: sample plugin
+version:
+  version: 1.0.0
+  minimum_ohtools_version: 0.3.3
+  published_at: 2026-07-25T00:00:00Z
+  yanked: false
+  manifest:
+    protocol_version: 1
+    name: sample
+    version: 1.0.0
+    description: sample plugin
+    commands:
+      - path: [sample, run]
+        use: run
+        short: Run sample
+        category: diagnostic
+        arguments: []
+        flags: []
+        requires_force: false
+        supports_dry_run: false
+        requires_confirmation: false
+  assets:
+    - os: linux
+      arch: amd64
+      url: https://github.com/example/sample/releases/download/v1.0.0/sample
+      sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      size_bytes: 10
+`
+	if err := os.WriteFile(filepath.Join(dir, "sample.yaml"), []byte(entry), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadEntries(dir); err == nil ||
+		!strings.Contains(err.Error(), "requires_root") {
+		t.Fatalf("missing field error = %v", err)
+	}
+}
+
 func TestMaterializeVerifiesAssetAndWritesExpectedManifest(t *testing.T) {
 	body := []byte("plugin-binary")
 	sum := sha256.Sum256(body)
@@ -238,6 +472,15 @@ func TestCompareManifestRejectsUnknownOrChangedOutput(t *testing.T) {
 	unknown := strings.TrimSuffix(string(actual), "}") + `,"unknown":true}`
 	if err := CompareManifest(expected, []byte(unknown)); err == nil {
 		t.Fatal("unknown manifest field accepted")
+	}
+	missingBoolean := strings.Replace(
+		string(actual),
+		`,"requires_root":false`,
+		"",
+		1,
+	)
+	if err := CompareManifest(expected, []byte(missingBoolean)); err == nil {
+		t.Fatal("manifest with missing required boolean accepted")
 	}
 }
 

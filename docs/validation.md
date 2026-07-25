@@ -42,13 +42,30 @@ the sentence in automation.
 - unknown and duplicate key rejection;
 - stable SemVer and release timestamp checks;
 - plugin/version/manifest identity checks;
-- command path and category checks;
+- command ownership, `use`/path agreement, bounded single-line help,
+  argument ordering, flag defaults, and reserved flag checks;
 - mutation dry-run requirements;
 - unique `linux/amd64` asset checks;
 - credential-free HTTPS, SHA-256, and size validation;
-- duplicate plugin/version detection during deterministic index build.
+- duplicate plugin/version and cross-package command ownership detection.
 
 It does not download assets.
+
+## Import release metadata
+
+Use the publisher-generated sidecar and exact release binary:
+
+```bash
+go run ./cmd/catalogctl import-release \
+  --metadata ./release-metadata-v1.json \
+  --binary ./plugin_linux_amd64 \
+  --plugins plugins
+```
+
+Import is create-only. It rejects duplicate or unknown JSON fields, symlink
+inputs/output components, traversal, credential-bearing asset URLs, mismatched
+identity, size, or digest, and any attempt to overwrite an existing entry.
+The resulting YAML is deterministic and is validated again by normal loading.
 
 ## Materialize assets
 
@@ -147,6 +164,10 @@ chain:
 ```text
 plugin implementation → manifest golden → catalog YAML
 ```
+
+The nested test suite also builds a real executable and runs
+`manifest → plan → execute → plan → execute`. The second plan and result must
+be an explicit successful no-op.
 
 ## GitHub Actions jobs
 

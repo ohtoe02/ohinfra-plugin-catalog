@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -28,5 +29,27 @@ func TestRunBuildsEmptyCatalog(t *testing.T) {
 	}
 	if _, err := os.Stat(output); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRunImportsReleaseSidecar(t *testing.T) {
+	dir := t.TempDir()
+	binary := filepath.Join(dir, "plugin")
+	if err := os.WriteFile(binary, []byte("binary"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	metadata := filepath.Join(dir, "release-metadata-v1.json")
+	if err := os.WriteFile(metadata, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	exit := run([]string{
+		"import-release",
+		"--metadata", metadata,
+		"--binary", binary,
+		"--plugins", filepath.Join(dir, "plugins"),
+	}, func(string) string { return "" }, &bytes.Buffer{}, &stderr)
+	if exit == 2 && strings.Contains(stderr.String(), "unknown command") {
+		t.Fatalf("import-release command is not registered: %s", stderr.String())
 	}
 }

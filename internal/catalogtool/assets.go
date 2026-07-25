@@ -63,6 +63,12 @@ func Materialize(
 }
 
 func CompareManifest(expected Manifest, actual []byte) error {
+	if err := rejectDuplicateJSONFields(actual); err != nil {
+		return err
+	}
+	if err := validateManifestPresence(actual); err != nil {
+		return err
+	}
 	decoder := json.NewDecoder(bytes.NewReader(actual))
 	decoder.DisallowUnknownFields()
 	var manifest Manifest

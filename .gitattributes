@@ -6,3 +6,4 @@
 *.md text eol=lf
 *.sh text eol=lf
 Makefile text eol=lf
+contracts/protocol-v1/SHA256SUMS text eol=lf

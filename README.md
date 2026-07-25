@@ -13,8 +13,12 @@ YAML entry per version under `plugins/<name>/<version>.yaml`.
   security, release, and submission workflow.
 - [Executable protocol v1](docs/protocol-v1.md) — complete manifest, invocation,
   plan, and Result JSON syntax.
+- [Protocol v1 contract bundle](contracts/protocol-v1/README.md) — canonical
+  JSON Schemas, conformance vectors, and checksums for vendored validators.
 - [Catalog entry reference](docs/catalog-entry.md) — strict YAML fields,
   immutable asset rules, and a complete entry.
+- [Release metadata v1](docs/release-metadata-v1.md) — strict sidecar consumed
+  by deterministic catalog import.
 - [Validation guide](docs/validation.md) — local checks, sandboxed CI, common
   failures, and the signing boundary.
 - [Minimal Go plugin](examples/minimal-go/README.md) — a standalone, tested

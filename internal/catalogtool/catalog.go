@@ -110,9 +110,22 @@ func Build(entries []Entry, sequence uint64, generatedAt, expiresAt time.Time) (
 		return nil, errors.New("invalid catalog release metadata")
 	}
 	grouped := map[string]*Plugin{}
+	commandOwners := map[string]string{}
 	for _, entry := range entries {
 		if err := ValidateEntry(entry); err != nil {
 			return nil, err
+		}
+		for _, command := range entry.Version.Manifest.Commands {
+			key := strings.Join(command.Path, " ")
+			if owner, exists := commandOwners[key]; exists && owner != entry.Name {
+				return nil, fmt.Errorf(
+					"command %q is owned by both %q and %q",
+					key,
+					owner,
+					entry.Name,
+				)
+			}
+			commandOwners[key] = entry.Name
 		}
 		item, exists := grouped[entry.Name]
 		if !exists {
@@ -207,6 +220,10 @@ func ValidateEntry(entry Entry) error {
 	if manifest.Description != entry.Description {
 		return errors.New("catalog description must exactly match manifest description")
 	}
+	if len(manifest.Commands) > 128 {
+		return errors.New("manifest command count exceeds 128")
+	}
+	commands := map[string]struct{}{}
 	for _, command := range manifest.Commands {
 		if len(command.Path) < 2 {
 			return errors.New("plugin command path must contain at least two segments")
@@ -215,6 +232,14 @@ func ValidateEntry(entry Entry) error {
 			if !identifier.MatchString(segment) {
 				return fmt.Errorf("invalid command segment %q", segment)
 			}
+		}
+		key := strings.Join(command.Path, " ")
+		if _, duplicate := commands[key]; duplicate {
+			return fmt.Errorf("duplicate command path %q", key)
+		}
+		commands[key] = struct{}{}
+		if err := validateCommand(command); err != nil {
+			return fmt.Errorf("command %q: %w", key, err)
 		}
 		switch command.Category {
 		case "diagnostic":
@@ -247,6 +272,151 @@ func ValidateEntry(entry Entry) error {
 		if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
 			return errors.New("asset URL must use credential-free HTTPS")
 		}
+	}
+	return nil
+}
+
+func validateCommand(command Command) error {
+	if command.Use != "" {
+		if err := validateHelpText("use", command.Use, false); err != nil {
+			return err
+		}
+		fields := strings.Fields(command.Use)
+		if len(fields) == 0 || fields[0] != command.Path[len(command.Path)-1] {
+			return fmt.Errorf(
+				"use must begin with final path segment %q",
+				command.Path[len(command.Path)-1],
+			)
+		}
+	}
+	if err := validateHelpText("short", command.Short, false); err != nil {
+		return err
+	}
+	if len(command.Arguments) > 64 {
+		return errors.New("argument count exceeds 64")
+	}
+	arguments := map[string]struct{}{}
+	optionalSeen := false
+	for index, argument := range command.Arguments {
+		if !identifier.MatchString(argument.Name) {
+			return fmt.Errorf("invalid argument name %q", argument.Name)
+		}
+		if _, duplicate := arguments[argument.Name]; duplicate {
+			return fmt.Errorf("duplicate argument %q", argument.Name)
+		}
+		arguments[argument.Name] = struct{}{}
+		if err := validateHelpText("argument description", argument.Description, true); err != nil {
+			return err
+		}
+		if argument.Required && optionalSeen {
+			return fmt.Errorf("required argument %q follows an optional argument", argument.Name)
+		}
+		if !argument.Required {
+			optionalSeen = true
+		}
+		if argument.Variadic && index != len(command.Arguments)-1 {
+			return fmt.Errorf("variadic argument %q must be last", argument.Name)
+		}
+	}
+	if len(command.Flags) > 64 {
+		return errors.New("flag count exceeds 64")
+	}
+	flags := map[string]struct{}{}
+	for _, flag := range command.Flags {
+		if !identifier.MatchString(flag.Name) {
+			return fmt.Errorf("invalid flag name %q", flag.Name)
+		}
+		if _, reserved := reservedFlags[flag.Name]; reserved {
+			return fmt.Errorf("flag %q is reserved by the host", flag.Name)
+		}
+		if _, duplicate := flags[flag.Name]; duplicate {
+			return fmt.Errorf("duplicate flag %q", flag.Name)
+		}
+		flags[flag.Name] = struct{}{}
+		if err := validateHelpText("flag description", flag.Description, true); err != nil {
+			return err
+		}
+		if err := validateFlagDefault(flag); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateHelpText(field, value string, optional bool) error {
+	if value == "" && optional {
+		return nil
+	}
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("%s must be valid UTF-8", field)
+	}
+	if len(value) > 512 {
+		return fmt.Errorf("%s exceeds 512 bytes", field)
+	}
+	if strings.TrimSpace(value) != value {
+		return fmt.Errorf("%s must not have surrounding whitespace", field)
+	}
+	for _, character := range value {
+		if unicode.IsControl(character) || character == '\u001b' {
+			return fmt.Errorf("%s must be one line without control characters", field)
+		}
+	}
+	return nil
+}
+
+var reservedFlags = map[string]struct{}{
+	"config": {}, "json": {}, "no-color": {}, "quiet": {}, "verbose": {},
+	"debug": {}, "dry-run": {}, "yes": {}, "force": {}, "timeout": {},
+	"output": {}, "version": {}, "help": {}, "retry-request-id": {},
+}
+
+func validateFlagDefault(flag Flag) error {
+	if flag.Default == nil {
+		switch flag.Type {
+		case "string", "bool", "int", "duration":
+			return nil
+		default:
+			return fmt.Errorf("flag %q has invalid type %q", flag.Name, flag.Type)
+		}
+	}
+	switch flag.Type {
+	case "string":
+		if _, ok := flag.Default.(string); !ok {
+			return fmt.Errorf("flag %q default must be a string", flag.Name)
+		}
+	case "bool":
+		if _, ok := flag.Default.(bool); !ok {
+			return fmt.Errorf("flag %q default must be a boolean", flag.Name)
+		}
+	case "int":
+		switch value := flag.Default.(type) {
+		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32:
+		case uint64:
+			if value > uint64(^uint(0)>>1) {
+				return fmt.Errorf("flag %q default is outside the host integer range", flag.Name)
+			}
+		case float64:
+			converted := int64(value)
+			if float64(converted) != value {
+				return fmt.Errorf("flag %q default must be an integer in host range", flag.Name)
+			}
+		case json.Number:
+			if _, err := value.Int64(); err != nil {
+				return fmt.Errorf("flag %q default must be an integer in host range", flag.Name)
+			}
+		default:
+			return fmt.Errorf("flag %q default must be an integer", flag.Name)
+		}
+	case "duration":
+		value, ok := flag.Default.(string)
+		if !ok {
+			return fmt.Errorf("flag %q default must be a duration string", flag.Name)
+		}
+		if _, err := time.ParseDuration(value); err != nil {
+			return fmt.Errorf("flag %q default is not a duration: %w", flag.Name, err)
+		}
+	default:
+		return fmt.Errorf("flag %q has invalid type %q", flag.Name, flag.Type)
 	}
 	return nil
 }

@@ -28,7 +28,7 @@ func run(
 	if len(arguments) == 0 {
 		_, _ = fmt.Fprintln(
 			stderr,
-			"usage: catalogctl <validate|build|sign|materialize|compare-manifest>",
+			"usage: catalogctl <validate|build|sign|materialize|compare-manifest|import-release>",
 		)
 		return 2
 	}
@@ -167,6 +167,26 @@ func run(
 			_, _ = fmt.Fprintln(stderr, err)
 			return 1
 		}
+		return 0
+	case "import-release":
+		flags := flag.NewFlagSet("import-release", flag.ContinueOnError)
+		flags.SetOutput(stderr)
+		metadata := flags.String("metadata", "", "release-metadata-v1.json sidecar")
+		binary := flags.String("binary", "", "exact release binary")
+		plugins := flags.String("plugins", "plugins", "catalog entries directory")
+		if err := flags.Parse(arguments[1:]); err != nil {
+			return 2
+		}
+		if *metadata == "" || *binary == "" {
+			_, _ = fmt.Fprintln(stderr, "metadata and binary are required")
+			return 2
+		}
+		output, err := catalogtool.ImportRelease(*metadata, *binary, *plugins)
+		if err != nil {
+			_, _ = fmt.Fprintln(stderr, err)
+			return 1
+		}
+		_, _ = fmt.Fprintln(stdout, output)
 		return 0
 	default:
 		_, _ = fmt.Fprintf(stderr, "unknown command %q\n", arguments[0])

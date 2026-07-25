@@ -3,8 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -121,6 +124,26 @@ func TestOperationalExecuteRequiresApprovedPlanAndWritesAtomically(t *testing.T)
 		t.Fatalf("unexpected result: %#v", result)
 	}
 
+	secondPlan, err := buildPlan(invocation, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(secondPlan.Changes) != 0 {
+		t.Fatalf("second plan changes = %#v, want no-op", secondPlan.Changes)
+	}
+	invocation.PlanDigest, err = planDigest(secondPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := execute(invocation, root, fixedNow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(second.Changes) != 0 || second.Data["changed"] != false ||
+		second.Data["reason"] != "already_desired" {
+		t.Fatalf("second execution is not an explicit no-op: %#v", second)
+	}
+
 	invocation.PlanDigest = strings.Repeat("0", 64)
 	if _, err := execute(invocation, root, fixedNow); err == nil || !strings.Contains(err.Error(), "plan digest") {
 		t.Fatalf("digest mismatch error = %v", err)
@@ -160,6 +183,112 @@ func TestRunKeepsProtocolJSONOnStdout(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &manifest); err != nil {
 		t.Fatalf("stdout is not one JSON document: %v", err)
 	}
+}
+
+func TestBuiltBinaryProtocolLifecycleIsIdempotent(t *testing.T) {
+	temp := t.TempDir()
+	root := filepath.Join(temp, "state")
+	binary := filepath.Join(temp, "example-plugin")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	build := exec.Command(
+		"go",
+		"build",
+		"-buildvcs=false",
+		"-trimpath",
+		"-ldflags=-X=main.defaultRoot="+filepath.ToSlash(root),
+		"-o",
+		binary,
+		".",
+	)
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build real plugin binary: %v\n%s", err, output)
+	}
+
+	manifestOutput, stderr, exit := runBinary(t, binary, "manifest", nil)
+	if exit != 0 || len(stderr) != 0 {
+		t.Fatalf("manifest exit=%d stderr=%q", exit, stderr)
+	}
+	var manifest Manifest
+	if err := json.Unmarshal(manifestOutput, &manifest); err != nil {
+		t.Fatalf("decode real manifest: %v", err)
+	}
+	if manifest.Name != "example-plugin" {
+		t.Fatalf("manifest identity = %#v", manifest)
+	}
+
+	invocation := Invocation{
+		ProtocolVersion: 1,
+		RequestID:       "binary-lifecycle",
+		CommandPath:     []string{"example", "write"},
+		Arguments:       []string{"from real binary"},
+		Options:         map[string]any{},
+	}
+	encoded, _ := json.Marshal(invocation)
+	firstPlanOutput, stderr, exit := runBinary(t, binary, "plan", encoded)
+	if exit != 0 || len(stderr) != 0 {
+		t.Fatalf("first plan exit=%d stderr=%q", exit, stderr)
+	}
+	var firstPlan Plan
+	if err := json.Unmarshal(firstPlanOutput, &firstPlan); err != nil {
+		t.Fatal(err)
+	}
+	if len(firstPlan.Changes) != 1 {
+		t.Fatalf("first plan changes = %#v", firstPlan.Changes)
+	}
+	invocation.PlanDigest, _ = planDigest(firstPlan)
+	encoded, _ = json.Marshal(invocation)
+	if _, stderr, exit = runBinary(t, binary, "execute", encoded); exit != 0 || len(stderr) != 0 {
+		t.Fatalf("execute exit=%d stderr=%q", exit, stderr)
+	}
+
+	invocation.PlanDigest = ""
+	encoded, _ = json.Marshal(invocation)
+	secondPlanOutput, stderr, exit := runBinary(t, binary, "plan", encoded)
+	if exit != 0 || len(stderr) != 0 {
+		t.Fatalf("second plan exit=%d stderr=%q", exit, stderr)
+	}
+	var secondPlan Plan
+	if err := json.Unmarshal(secondPlanOutput, &secondPlan); err != nil {
+		t.Fatal(err)
+	}
+	if len(secondPlan.Changes) != 0 {
+		t.Fatalf("second plan changes = %#v, want no-op", secondPlan.Changes)
+	}
+	invocation.PlanDigest, _ = planDigest(secondPlan)
+	encoded, _ = json.Marshal(invocation)
+	resultOutput, stderr, exit := runBinary(t, binary, "execute", encoded)
+	if exit != 0 || len(stderr) != 0 {
+		t.Fatalf("second execute exit=%d stderr=%q", exit, stderr)
+	}
+	var result Result
+	if err := json.Unmarshal(resultOutput, &result); err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Changes) != 0 || result.Data["reason"] != "already_desired" {
+		t.Fatalf("second result = %#v", result)
+	}
+}
+
+func runBinary(t *testing.T, binary, verb string, input []byte) ([]byte, []byte, int) {
+	t.Helper()
+	command := exec.Command(binary, verb, "--protocol=1")
+	command.Stdin = bytes.NewReader(input)
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	err := command.Run()
+	if err == nil {
+		return stdout.Bytes(), stderr.Bytes(), 0
+	}
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
+		return stdout.Bytes(), stderr.Bytes(), exitError.ExitCode()
+	}
+	t.Fatalf("run %s: %v", verb, err)
+	return nil, nil, -1
 }
 
 func fixedNow() time.Time {

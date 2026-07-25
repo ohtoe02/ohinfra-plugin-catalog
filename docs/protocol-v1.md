@@ -136,7 +136,7 @@ These global host flag names are reserved and cannot be declared by a plugin:
 
 ```text
 config json no-color quiet verbose debug dry-run yes force timeout output
-version help
+version help retry-request-id
 ```
 
 ## Invocation
@@ -215,6 +215,8 @@ command:    "example write"
 The host merges manifest security requirements into the plan, renders it for
 dry-run or confirmation, serializes the approved plan as JSON, and computes its
 SHA-256. The `execute` Invocation carries that lowercase hexadecimal digest.
+Canonical digest byte fixtures are published in
+[`contracts/protocol-v1/conformance/plan-digest.json`](../contracts/protocol-v1/conformance/plan-digest.json).
 
 A plugin that verifies the digest must recreate the exact effective plan. The
 safest pattern is to return the same `requires_root`, `requires_force`, and
@@ -301,8 +303,10 @@ the Result-producing implementation is in
 Protocol v1 does not provide an exported Go SDK. Stable interfaces are the
 executable argv, JSON documents in this guide, Result schema v1, and catalog
 YAML. Vendor local wire structs or generate them from the published JSON
-schemas when available; do not import `ohtools/internal` packages.
+schemas in the
+[`contracts/protocol-v1`](../contracts/protocol-v1/README.md) bundle; do not
+import `ohtools/internal` packages. A vendored bundle must verify
+`SHA256SUMS` and record its source catalog commit.
 
 Adding an unknown field is not backward compatible with strict v1 readers.
 Protocol evolution therefore requires a new negotiated protocol version.
-
