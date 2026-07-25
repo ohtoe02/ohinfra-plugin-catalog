@@ -62,9 +62,12 @@ go run ./cmd/catalogctl import-release \
   --plugins plugins
 ```
 
-Import is create-only. It rejects duplicate or unknown JSON fields, symlink
-inputs/output components, traversal, credential-bearing asset URLs, mismatched
-identity, size, or digest, and any attempt to overwrite an existing entry.
+Import is create-only. Explicit metadata and binary paths may be absolute or
+relative, but their final components must be regular non-symlink files. The
+importer rejects symlink output components, traversal in metadata-derived
+package/version paths, duplicate or unknown JSON fields, credential-bearing
+asset URLs, mismatched identity, size or digest, and any attempt to overwrite
+an existing entry.
 The resulting YAML is deterministic and is validated again by normal loading.
 
 ## Materialize assets

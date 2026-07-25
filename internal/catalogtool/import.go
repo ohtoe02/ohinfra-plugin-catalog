@@ -375,32 +375,6 @@ func inspectJSONValue(decoder *json.Decoder) error {
 	return nil
 }
 
-func readRegularFile(path string, limit int64) ([]byte, error) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return nil, err
-	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-		return nil, errors.New("path must be a regular non-symlink file")
-	}
-	if info.Size() < 0 || info.Size() > limit {
-		return nil, fmt.Errorf("file exceeds %d bytes", limit)
-	}
-	file, err := os.Open(path) // #nosec G304 -- explicit maintainer CLI input checked by Lstat.
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	encoded, err := io.ReadAll(io.LimitReader(file, limit+1))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(encoded)) > limit {
-		return nil, fmt.Errorf("file exceeds %d bytes", limit)
-	}
-	return encoded, nil
-}
-
 func validateOutputRoot(root string) error {
 	if strings.TrimSpace(root) == "" {
 		return errors.New("plugins directory is required")

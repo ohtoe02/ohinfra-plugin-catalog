@@ -63,16 +63,16 @@ go run ./cmd/catalogctl import-release \
   --plugins plugins
 ```
 
-The importer reads regular non-symlink files, validates the exact binary, and
-copies those verified bytes into an isolated bind mount before invoking
-`manifest --protocol=1` through the local Docker runtime. The production path
-is fail-closed: `/usr/bin/docker` and the preloaded
+On Linux the importer opens each explicit input with `O_NOFOLLOW` and validates
+type and size on that same descriptor before reading it. It validates the exact
+binary and copies those verified bytes into an isolated bind mount before
+invoking `manifest --protocol=1` through the local Docker runtime. The
+production path is fail-closed: `/usr/bin/docker` and the preloaded
 `debian@sha256:28de0877c2189802884ccd20f15ee41c203573bd87bb6b883f5f46362d24c5c2`
-image must
-be available. The container has no network, runs non-root with a read-only
-filesystem, all capabilities dropped, `no-new-privileges`, and bounded CPU,
-memory, process count, output, and runtime. A timeout triggers explicit
-container cleanup.
+image must be available. The container has no network, runs non-root with a
+read-only filesystem, all capabilities dropped, `no-new-privileges`, and
+bounded CPU, memory, process count, output, and runtime. A timeout triggers
+explicit container cleanup.
 
 The emitted manifest must exactly match the sidecar. The importer then creates
 `plugins/<name>/<version>.yaml` with atomic create-if-absent semantics and never

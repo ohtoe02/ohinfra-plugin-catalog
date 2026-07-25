@@ -382,6 +382,82 @@ func TestImportReleaseRejectsSymlinkInput(t *testing.T) {
 	}
 }
 
+func TestImportReleaseRejectsSymlinkBinary(t *testing.T) {
+	if testing.Short() {
+		t.Skip("filesystem safety integration")
+	}
+	root := t.TempDir()
+	binary, content := buildReleaseFixture(t, root)
+	sidecar := writeReleaseSidecar(t, root, releaseFixtureMetadata(content))
+	link := filepath.Join(root, "plugin-link")
+	if runtime.GOOS == "windows" {
+		link += ".exe"
+	}
+	if err := os.Symlink(binary, link); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := ImportReleaseWithSandbox(
+		sidecar,
+		link,
+		filepath.Join(root, "plugins"),
+		trustedFixtureSandbox{},
+	); err == nil || !strings.Contains(err.Error(), "non-symlink") {
+		t.Fatalf("symlink binary error = %v", err)
+	}
+}
+
+func TestImportReleaseRejectsTraversalMetadataName(t *testing.T) {
+	root := t.TempDir()
+	binary, content := buildReleaseFixture(t, root)
+	metadata := releaseFixtureMetadata(content)
+	metadata.Name = "../escape"
+	metadata.Manifest.Name = metadata.Name
+	sidecar := writeReleaseSidecar(t, root, metadata)
+	plugins := filepath.Join(root, "plugins")
+
+	if _, err := ImportReleaseWithSandbox(
+		sidecar,
+		binary,
+		plugins,
+		trustedFixtureSandbox{},
+	); err == nil || !strings.Contains(err.Error(), "invalid plugin name") {
+		t.Fatalf("traversal metadata error = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "escape")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("traversal created an outside path: %v", err)
+	}
+}
+
+func TestReadRegularFileReadsFromPinnedDescriptorAfterPathReplacement(t *testing.T) {
+	root := t.TempDir()
+	input := filepath.Join(root, "input")
+	opened := filepath.Join(root, "opened")
+	if err := os.WriteFile(input, []byte("trusted"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(opened, []byte("trusted"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := readRegularFileWithOpener(input, 64, func(path string) (*os.File, error) {
+		file, openErr := os.Open(opened)
+		if openErr != nil {
+			return nil, openErr
+		}
+		if writeErr := os.WriteFile(path, []byte("replacement"), 0o600); writeErr != nil {
+			_ = file.Close()
+			return nil, writeErr
+		}
+		return file, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "trusted" {
+		t.Fatalf("read replacement bytes %q", content)
+	}
+}
+
 func buildReleaseFixture(t *testing.T, root string) (string, []byte) {
 	t.Helper()
 	binary := buildTestCommand(t, root, "./testdata/releasefixture", "releasefixture")
