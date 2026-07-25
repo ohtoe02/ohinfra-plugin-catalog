@@ -3,7 +3,7 @@ description: Docker Engine and Compose diagnostics for ohtools.
 homepage: https://github.com/ohtoe02/ohtools-plugins
 version:
   version: 1.0.1
-  minimum_ohtools_version: 0.3.1
+  minimum_ohtools_version: 0.3.2
   published_at: 2026-07-25T04:35:42Z
   yanked: false
   manifest:
