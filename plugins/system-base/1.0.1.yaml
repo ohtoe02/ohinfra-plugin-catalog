@@ -1,16 +1,16 @@
 name: system-base
-description: Operating system information and health diagnostics for ohinfra.
-homepage: https://github.com/ohtoe02/ohinfra-plugins
+description: Operating system information and health diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
 version:
-  version: 1.0.0
-  minimum_ohinfra_version: 0.3.0
-  published_at: 2026-07-24T18:16:42Z
+  version: 1.0.1
+  minimum_ohtools_version: 0.3.1
+  published_at: 2026-07-25T04:35:24Z
   yanked: false
   manifest:
     protocol_version: 1
     name: system-base
-    version: 1.0.0
-    description: Operating system information and health diagnostics for ohinfra.
+    version: 1.0.1
+    description: Operating system information and health diagnostics for ohtools.
     commands:
       - path: [system, info]
         use: info
@@ -35,6 +35,6 @@ version:
   assets:
     - os: linux
       arch: amd64
-      url: https://github.com/ohtoe02/ohinfra-plugins/releases/download/system-base-v1.0.0/system-base_linux_amd64
-      sha256: 43bda4dc5c38e13ced344619787274920e7e985620f7fa9d140662d2d2a73a36
+      url: https://github.com/ohtoe02/ohtools-plugins/releases/download/system-base-v1.0.1/system-base_linux_amd64
+      sha256: cb739ed2d8c1a83d110c1865f7f55188cabaa881a3d19ea40a7930d11a5a6c1f
       size_bytes: 3248290

@@ -94,7 +94,7 @@ func TestOperationalExecuteRequiresApprovedPlanAndWritesAtomically(t *testing.T)
 		ProtocolVersion: 1,
 		RequestID:       "write-1",
 		CommandPath:     []string{"example", "write"},
-		Arguments:       []string{"hello from ohinfra"},
+		Arguments:       []string{"hello from ohtools"},
 		Options:         map[string]any{},
 	}
 	plan, err := buildPlan(invocation, root)
@@ -114,7 +114,7 @@ func TestOperationalExecuteRequiresApprovedPlanAndWritesAtomically(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(content) != "hello from ohinfra\n" {
+	if string(content) != "hello from ohtools\n" {
 		t.Fatalf("content = %q", content)
 	}
 	if result.Status != "pass" || len(result.Changes) != 1 || result.Changes[0].Status != "applied" {

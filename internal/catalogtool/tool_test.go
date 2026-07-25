@@ -121,7 +121,7 @@ func TestLoadEntriesUsesStrictYAML(t *testing.T) {
 description: sample plugin
 version:
   version: 1.0.0
-  minimum_ohinfra_version: 0.2.0
+  minimum_ohtools_version: 0.2.0
   published_at: 2026-07-24T00:00:00Z
   yanked: false
   manifest:
@@ -245,7 +245,7 @@ func validEntry(name, version string, published time.Time) Entry {
 	return Entry{
 		Name: name, Description: name + " plugin",
 		Version: PluginVersion{
-			Version: version, MinimumOHInfraVersion: "0.2.0", PublishedAt: published,
+			Version: version, MinimumOHToolsVersion: "0.2.0", PublishedAt: published,
 			Manifest: Manifest{
 				ProtocolVersion: 1, Name: name, Version: version,
 				Description: name + " plugin",

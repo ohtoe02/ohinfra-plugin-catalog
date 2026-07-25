@@ -2,7 +2,7 @@
   "protocol_version": 1,
   "name": "example-plugin",
   "version": "1.0.0",
-  "description": "Minimal reference implementation for ohinfra plugin protocol v1",
+  "description": "Minimal reference implementation for ohtools plugin protocol v1",
   "commands": [
     {
       "path": ["example", "echo"],
@@ -33,7 +33,7 @@
     {
       "path": ["example", "write"],
       "use": "write <text>",
-      "short": "Write a message under /tmp/ohinfra-example",
+      "short": "Write a message under /tmp/ohtools-example",
       "category": "operational",
       "arguments": [
         {

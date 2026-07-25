@@ -1,16 +1,16 @@
 name: docker-base
-description: Docker Engine and Compose diagnostics for ohinfra.
-homepage: https://github.com/ohtoe02/ohinfra-plugins
+description: Docker Engine and Compose diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
 version:
-  version: 1.0.0
-  minimum_ohinfra_version: 0.3.0
-  published_at: 2026-07-24T18:17:09Z
+  version: 1.0.1
+  minimum_ohtools_version: 0.3.1
+  published_at: 2026-07-25T04:35:42Z
   yanked: false
   manifest:
     protocol_version: 1
     name: docker-base
-    version: 1.0.0
-    description: Docker Engine and Compose diagnostics for ohinfra.
+    version: 1.0.1
+    description: Docker Engine and Compose diagnostics for ohtools.
     commands:
       - path: [docker, status]
         use: status
@@ -175,6 +175,6 @@ version:
   assets:
     - os: linux
       arch: amd64
-      url: https://github.com/ohtoe02/ohinfra-plugins/releases/download/docker-base-v1.0.0/docker-base_linux_amd64
-      sha256: 010f337a00959521819233302fb1d53c21faa707b4bf708cde9f094ba08a8543
+      url: https://github.com/ohtoe02/ohtools-plugins/releases/download/docker-base-v1.0.1/docker-base_linux_amd64
+      sha256: efa02cab8a1999d1220f14f22d4f16e3379e3fca68ef0d2cd49d51138e00f285
       size_bytes: 6906018

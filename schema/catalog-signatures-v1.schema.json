@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:ohinfra:catalog-signatures:v1",
-  "title": "ohinfra catalog signature envelope v1",
+  "$id": "urn:ohtools:catalog-signatures:v1",
+  "title": "ohtools catalog signature envelope v1",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "signatures"],

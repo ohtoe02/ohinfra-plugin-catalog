@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ohtoe02/ohinfra-plugin-catalog/internal/catalogtool"
+	"github.com/ohtoe02/ohtools-plugin-catalog/internal/catalogtool"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/ohtoe02/ohinfra-plugin-catalog
+module github.com/ohtoe02/ohtools-plugin-catalog
 
 go 1.26.0
 
