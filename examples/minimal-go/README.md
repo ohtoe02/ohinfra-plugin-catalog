@@ -1,15 +1,15 @@
 # Minimal Go plugin
 
-This directory is a complete, standalone `ohinfra` protocol-v1 plugin project.
+This directory is a complete, standalone `ohtools` protocol-v1 plugin project.
 It intentionally uses only the Go standard library: copy the directory into a
-new repository, replace `github.com/example/ohinfra-example-plugin` in
+new repository, replace `github.com/example/ohtools-example-plugin` in
 `go.mod`, and rename the plugin and commands.
 
 The example registers:
 
-- `ohinfra example echo <text> [--uppercase]`, a read-only diagnostic command;
-- `ohinfra example write <text>`, an operational command that plans and then
-  atomically writes `/tmp/ohinfra-example/message.txt`.
+- `ohtools example echo <text> [--uppercase]`, a read-only diagnostic command;
+- `ohtools example write <text>`, an operational command that plans and then
+  atomically writes `/tmp/ohtools-example/message.txt`.
 
 The write command demonstrates the protocol flow and should not be treated as a
 recommended location for real plugin state.
@@ -47,7 +47,7 @@ printf '%s\n' \
 
 An operational `execute` request must contain the SHA-256 digest of the exact
 JSON plan approved by the host. Normal users should exercise that flow through
-`ohinfra`, which computes and supplies the digest.
+`ohtools`, which computes and supplies the digest.
 
 ## Build the catalog asset
 

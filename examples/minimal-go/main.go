@@ -15,7 +15,7 @@ import (
 
 const (
 	protocolVersion = 1
-	defaultRoot     = "/tmp/ohinfra-example"
+	defaultRoot     = "/tmp/ohtools-example"
 )
 
 var version = "1.0.0"
@@ -188,7 +188,7 @@ func pluginManifest() Manifest {
 		ProtocolVersion: protocolVersion,
 		Name:            "example-plugin",
 		Version:         version,
-		Description:     "Minimal reference implementation for ohinfra plugin protocol v1",
+		Description:     "Minimal reference implementation for ohtools plugin protocol v1",
 		Commands: []Command{
 			{
 				Path:     []string{"example", "echo"},
@@ -206,7 +206,7 @@ func pluginManifest() Manifest {
 			{
 				Path:     []string{"example", "write"},
 				Use:      "write <text>",
-				Short:    "Write a message under /tmp/ohinfra-example",
+				Short:    "Write a message under /tmp/ohtools-example",
 				Category: "operational",
 				Arguments: []Argument{{
 					Name: "text", Description: "Message to write", Required: true,

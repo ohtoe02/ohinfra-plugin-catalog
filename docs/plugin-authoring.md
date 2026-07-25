@@ -1,6 +1,6 @@
-# Author an ohinfra plugin
+# Author an ohtools plugin
 
-An `ohinfra` plugin is a public, static `linux/amd64` executable that exposes
+An `ohtools` plugin is a public, static `linux/amd64` executable that exposes
 first-class CLI commands through the
 [executable protocol v1](protocol-v1.md). The catalog does not build plugins
 for publishers: it reviews metadata, verifies an immutable release asset, and
@@ -35,7 +35,7 @@ Replace at least:
 4. binary/project names in the Makefile and GoReleaser configuration;
 5. repository metadata in README and the catalog entry template.
 
-Keep the plugin independent of `ohinfra/internal` packages. They are not a
+Keep the plugin independent of `ohtools/internal` packages. They are not a
 public SDK and may change without compatibility guarantees.
 
 ## Design command paths
@@ -51,9 +51,9 @@ Each path has at least a module and command:
 This registers:
 
 ```text
-ohinfra postgres connections
-ohinfra postgres vacuum
-ohinfra network dns check
+ohtools postgres connections
+ohtools postgres vacuum
+ohtools network dns check
 ```
 
 Use lowercase identifiers with letters, numbers, and hyphens. Choose a

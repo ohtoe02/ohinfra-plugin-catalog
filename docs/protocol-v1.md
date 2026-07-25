@@ -1,6 +1,6 @@
 # Executable plugin protocol v1
 
-This document is the wire reference for executables loaded by `ohinfra` 0.2.
+This document is the wire reference for executables loaded by `ohtools` 0.2.
 The protocol is language-neutral. A plugin is one executable that accepts a
 protocol verb and exchanges one JSON document with the host.
 
@@ -12,9 +12,9 @@ For an end-to-end project, see the
 The host invokes these exact forms without a shell:
 
 ```text
-/usr/lib/ohinfra/plugins/<file> manifest --protocol=1
-/usr/lib/ohinfra/plugins/<file> plan --protocol=1
-/usr/lib/ohinfra/plugins/<file> execute --protocol=1
+/usr/lib/ohtools/plugins/<file> manifest --protocol=1
+/usr/lib/ohtools/plugins/<file> plan --protocol=1
+/usr/lib/ohtools/plugins/<file> execute --protocol=1
 ```
 
 The contract for every invocation is:
@@ -42,14 +42,14 @@ host lifecycle.
 ## Manifest
 
 `manifest --protocol=1` returns the plugin identity and all commands registered
-under the `ohinfra` command tree.
+under the `ohtools` command tree.
 
 ```json
 {
   "protocol_version": 1,
   "name": "example-plugin",
   "version": "1.0.0",
-  "description": "Minimal reference implementation for ohinfra plugin protocol v1",
+  "description": "Minimal reference implementation for ohtools plugin protocol v1",
   "commands": [
     {
       "path": ["example", "echo"],
@@ -98,7 +98,7 @@ executables cannot declare the same name.
 
 | Field | Type | Rules |
 | --- | --- | --- |
-| `path` | string array | At least two identifier segments. Registers `ohinfra <segment> ...`. |
+| `path` | string array | At least two identifier segments. Registers `ohtools <segment> ...`. |
 | `use` | string | Cobra-style usage for the final command, for example `echo <text>`. |
 | `short` | string | One-line help text. |
 | `category` | string | `diagnostic`, `operational`, or `runbook`. |
@@ -186,7 +186,7 @@ must not change system state.
   "checks": [],
   "changes": [
     {
-      "object": "/tmp/ohinfra-example/message.txt",
+      "object": "/tmp/ohtools-example/message.txt",
       "action": "write",
       "status": "planned",
       "details": {
@@ -301,7 +301,7 @@ the Result-producing implementation is in
 Protocol v1 does not provide an exported Go SDK. Stable interfaces are the
 executable argv, JSON documents in this guide, Result schema v1, and catalog
 YAML. Vendor local wire structs or generate them from the published JSON
-schemas when available; do not import `ohinfra/internal` packages.
+schemas when available; do not import `ohtools/internal` packages.
 
 Adding an unknown field is not backward compatible with strict v1 readers.
 Protocol evolution therefore requires a new negotiated protocol version.

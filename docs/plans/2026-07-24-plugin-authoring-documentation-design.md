@@ -7,13 +7,13 @@
 
 Give plugin authors one complete, reviewable path from an empty Go project to a
 catalog contribution that passes the repository's local and GitHub validation.
-The documentation must describe the protocol as implemented by `ohinfra`, not
+The documentation must describe the protocol as implemented by `ohtools`, not
 introduce a separate SDK or an unofficial abstraction.
 
 ## Audience
 
 The primary reader is an infrastructure engineer who can build a static Go
-binary but has not implemented an `ohinfra` plugin before. Catalog maintainers
+binary but has not implemented an `ohtools` plugin before. Catalog maintainers
 are the secondary audience; the validation guide should help them explain a
 failed contribution without reading `catalogctl` source first.
 
@@ -35,7 +35,7 @@ submission checklist with links to the detailed guides.
 ## Runnable example
 
 Add `examples/minimal-go/` as a standalone Go module so authors can copy it
-without importing `ohinfra/internal` packages. The example includes:
+without importing `ohtools/internal` packages. The example includes:
 
 ```text
 examples/minimal-go/
@@ -52,7 +52,7 @@ examples/minimal-go/
 
 The binary implements `manifest`, `plan`, and `execute` with only the Go
 standard library. It exposes a diagnostic echo command and a safe operational
-file command constrained to `/tmp/ohinfra-example/`. This demonstrates command
+file command constrained to `/tmp/ohtools-example/`. This demonstrates command
 metadata, typed flags, strict input, canonical Result v1, planning, dry-run
 support, and plan-digest binding without making the example depend on the host
 source tree.
@@ -82,7 +82,7 @@ Catalog contribution validation remains authoritative:
 
 ## Maintenance and source of truth
 
-The executable protocol implementation in `ohinfra` and the catalog validation
+The executable protocol implementation in `ohtools` and the catalog validation
 code remain the source of truth. Documentation names limits and invariants that
 are enforced today, and avoids promising an exported Go SDK. Any protocol or
 catalog schema change must update the guides, the example, and their contract

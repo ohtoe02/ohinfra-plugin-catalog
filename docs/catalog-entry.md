@@ -29,7 +29,7 @@ description: PostgreSQL server diagnostics and controlled maintenance
 homepage: https://github.com/example/postgres-tools
 version:
   version: 1.2.0
-  minimum_ohinfra_version: 0.2.0
+  minimum_ohtools_version: 0.2.0
   published_at: 2026-07-24T12:00:00Z
   yanked: false
   manifest:
@@ -107,10 +107,10 @@ metadata. It must match:
 The catalog does not accept prerelease versions or two entries with the same
 plugin/version identity.
 
-### `minimum_ohinfra_version`
+### `minimum_ohtools_version`
 
 Required stable `X.Y.Z` version of the oldest compatible host. Be conservative:
-set this to the first released `ohinfra` version whose protocol and host
+set this to the first released `ohtools` version whose protocol and host
 behavior the plugin has tested.
 
 The client excludes versions newer than the running host can support.

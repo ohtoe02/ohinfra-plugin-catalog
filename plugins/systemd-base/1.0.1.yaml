@@ -1,16 +1,16 @@
 name: systemd-base
-description: Systemd service status, logs, and controlled restart operations for ohinfra.
-homepage: https://github.com/ohtoe02/ohinfra-plugins
+description: Systemd service status, logs, and controlled restart operations for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
 version:
-  version: 1.0.0
-  minimum_ohinfra_version: 0.3.0
-  published_at: 2026-07-24T18:16:59Z
+  version: 1.0.1
+  minimum_ohtools_version: 0.3.2
+  published_at: 2026-07-25T04:35:21Z
   yanked: false
   manifest:
     protocol_version: 1
     name: systemd-base
-    version: 1.0.0
-    description: Systemd service status, logs, and controlled restart operations for ohinfra.
+    version: 1.0.1
+    description: Systemd service status, logs, and controlled restart operations for ohtools.
     commands:
       - path: [service, status]
         use: status <unit>
@@ -65,6 +65,6 @@ version:
   assets:
     - os: linux
       arch: amd64
-      url: https://github.com/ohtoe02/ohinfra-plugins/releases/download/systemd-base-v1.0.0/systemd-base_linux_amd64
-      sha256: cc183802259dda08626b0dde1d3893665b03298fe58dab9b2f5744be7ff1d3eb
+      url: https://github.com/ohtoe02/ohtools-plugins/releases/download/systemd-base-v1.0.1/systemd-base_linux_amd64
+      sha256: 31686be4461d13b14faa086401aeaea28c013042de21dfa593bd3a95f14c3fee
       size_bytes: 3215522

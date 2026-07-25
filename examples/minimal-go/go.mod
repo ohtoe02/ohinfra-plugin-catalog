@@ -1,4 +1,4 @@
-module github.com/example/ohinfra-example-plugin
+module github.com/example/ohtools-example-plugin
 
 go 1.26.0
 

@@ -1,7 +1,7 @@
-# ohinfra plugin catalog
+# ohtools plugin catalog
 
 This public repository is the curated source for plugins installable through
-`ohinfra plugin`. It stores reviewable version entries; clients consume only
+`ohtools plugin`. It stores reviewable version entries; clients consume only
 Ed25519-signed snapshots published as immutable GitHub Release assets.
 
 The initial catalog is intentionally empty. Plugin publishers add one strict

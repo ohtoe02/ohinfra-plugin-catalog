@@ -44,7 +44,7 @@ type Plugin struct {
 
 type PluginVersion struct {
 	Version               string    `json:"version" yaml:"version"`
-	MinimumOHInfraVersion string    `json:"minimum_ohinfra_version" yaml:"minimum_ohinfra_version"`
+	MinimumOHToolsVersion string    `json:"minimum_ohtools_version" yaml:"minimum_ohtools_version"`
 	PublishedAt           time.Time `json:"published_at" yaml:"published_at"`
 	Yanked                bool      `json:"yanked" yaml:"yanked"`
 	Manifest              Manifest  `json:"manifest" yaml:"manifest"`
@@ -193,7 +193,7 @@ func ValidateEntry(entry Entry) error {
 	if _, err := stableVersion(entry.Version.Version); err != nil {
 		return err
 	}
-	if _, err := stableVersion(entry.Version.MinimumOHInfraVersion); err != nil {
+	if _, err := stableVersion(entry.Version.MinimumOHToolsVersion); err != nil {
 		return err
 	}
 	if entry.Version.PublishedAt.IsZero() {

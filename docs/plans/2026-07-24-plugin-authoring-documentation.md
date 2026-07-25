@@ -54,7 +54,7 @@ Cover:
 - a plan whose `command_id` matches the invocation path;
 - SHA-256 plan digest binding on execute;
 - rejection of unknown JSON fields and paths outside
-  `/tmp/ohinfra-example/`.
+  `/tmp/ohtools-example/`.
 
 **Step 2: Run the example tests to verify they fail**
 

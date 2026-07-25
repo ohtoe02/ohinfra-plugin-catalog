@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:ohinfra:catalog-index:v1",
-  "title": "ohinfra plugin catalog index v1",
+  "$id": "urn:ohtools:catalog-index:v1",
+  "title": "ohtools plugin catalog index v1",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "sequence", "generated_at", "expires_at", "plugins"],
@@ -36,10 +36,10 @@
     "pluginVersion": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["version", "minimum_ohinfra_version", "published_at", "yanked", "manifest", "assets"],
+      "required": ["version", "minimum_ohtools_version", "published_at", "yanked", "manifest", "assets"],
       "properties": {
         "version": {"$ref": "#/$defs/version"},
-        "minimum_ohinfra_version": {"$ref": "#/$defs/version"},
+        "minimum_ohtools_version": {"$ref": "#/$defs/version"},
         "published_at": {"type": "string", "format": "date-time"},
         "yanked": {"type": "boolean"},
         "manifest": {"type": "object"},
