@@ -32,7 +32,7 @@ func TestImportReleaseWritesDeterministicValidatedEntry(t *testing.T) {
 		PublishedAt:           time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC),
 		Asset: Asset{
 			OS: "linux", Arch: "amd64",
-			URL:       "https://github.com/example/sample/releases/download/v1.2.3/sample",
+			URL:       "https://github.com/ohtoe02/ohtools-plugins/releases/download/sample-v1.2.3/sample_linux_amd64",
 			SHA256:    hex.EncodeToString(sum[:]),
 			SizeBytes: int64(len(content)),
 		},
@@ -66,10 +66,11 @@ func TestImportReleaseWritesDeterministicValidatedEntry(t *testing.T) {
 	if err := os.WriteFile(duplicateSidecar, []byte(duplicate), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ImportRelease(
+	if _, err := ImportReleaseWithSandbox(
 		duplicateSidecar,
 		binary,
 		filepath.Join(root, "duplicate-plugins"),
+		trustedFixtureSandbox{},
 	); err == nil || !strings.Contains(err.Error(), "duplicate JSON field") {
 		t.Fatalf("duplicate field error = %v", err)
 	}
@@ -78,10 +79,11 @@ func TestImportReleaseWritesDeterministicValidatedEntry(t *testing.T) {
 	if err := os.WriteFile(missingFieldSidecar, []byte(missingField), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ImportRelease(
+	if _, err := ImportReleaseWithSandbox(
 		missingFieldSidecar,
 		binary,
 		filepath.Join(root, "missing-field-plugins"),
+		trustedFixtureSandbox{},
 	); err == nil || !strings.Contains(err.Error(), "missing JSON field") {
 		t.Fatalf("missing field error = %v", err)
 	}
@@ -178,6 +180,14 @@ func TestDockerManifestSandboxUsesRestrictedContainerAndExactBytes(t *testing.T)
 	}
 }
 
+func TestDefaultDockerManifestSandboxPinsExactImageDigest(t *testing.T) {
+	t.Parallel()
+	const expected = "debian@sha256:28de0877c2189802884ccd20f15ee41c203573bd87bb6b883f5f46362d24c5c2"
+	if sandbox := DefaultDockerManifestSandbox(); sandbox.Image != expected {
+		t.Fatalf("sandbox image=%q want=%q", sandbox.Image, expected)
+	}
+}
+
 func TestDockerManifestSandboxBoundsTimeAndOutput(t *testing.T) {
 	root := t.TempDir()
 	runtimePath := buildTestCommand(t, root, "./testdata/fakedocker", "fakedocker")
@@ -210,7 +220,6 @@ func TestDockerManifestSandboxBoundsTimeAndOutput(t *testing.T) {
 
 func TestCommitNewFileNoReplaceIsAtomicUnderConcurrency(t *testing.T) {
 	root := t.TempDir()
-	target := filepath.Join(root, "entry.yaml")
 	const contenders = 32
 	start := make(chan struct{})
 	results := make(chan error, contenders)
@@ -219,13 +228,13 @@ func TestCommitNewFileNoReplaceIsAtomicUnderConcurrency(t *testing.T) {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			staged := filepath.Join(root, "stage-"+strconv.Itoa(index))
-			if err := os.WriteFile(staged, []byte{byte(index)}, 0o600); err != nil {
-				results <- err
-				return
-			}
 			<-start
-			results <- commitNewFileNoReplace(staged, target)
+			results <- writeCatalogEntryAtomic(
+				root,
+				"sample",
+				"entry.yaml",
+				[]byte(strconv.Itoa(index)),
+			)
 		}()
 	}
 	close(start)
@@ -345,6 +354,16 @@ func TestImportReleaseRejectsUnsafeOrMismatchedInputs(t *testing.T) {
 	}
 }
 
+func TestProductionImportFailsClosedOutsideLinux(t *testing.T) {
+	if runtime.GOOS == "linux" {
+		t.Skip("production import is supported on Linux")
+	}
+	_, err := ImportRelease("missing", "missing", t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "supported only on Linux") {
+		t.Fatalf("platform error = %v", err)
+	}
+}
+
 func TestImportReleaseRejectsSymlinkInput(t *testing.T) {
 	if testing.Short() {
 		t.Skip("filesystem safety integration")
@@ -398,7 +417,7 @@ func releaseFixtureMetadata(content []byte) ReleaseMetadata {
 		PublishedAt:           time.Date(2026, 7, 25, 10, 0, 0, 0, time.UTC),
 		Asset: Asset{
 			OS: "linux", Arch: "amd64",
-			URL:       "https://github.com/example/sample/releases/download/v1.2.3/sample",
+			URL:       "https://github.com/ohtoe02/ohtools-plugins/releases/download/sample-v1.2.3/sample_linux_amd64",
 			SHA256:    hex.EncodeToString(sum[:]),
 			SizeBytes: int64(len(content)),
 		},
@@ -431,6 +450,8 @@ func writeReleaseSidecar(t *testing.T, root string, metadata ReleaseMetadata) st
 
 type trustedFixtureSandbox struct{}
 
+func (trustedFixtureSandbox) testOnlyManifestSandbox() {}
+
 func (trustedFixtureSandbox) Manifest(ctx context.Context, binary []byte) ([]byte, error) {
 	directory, err := os.MkdirTemp("", "ohtools-trusted-fixture-*")
 	if err != nil {
@@ -453,6 +474,8 @@ func (trustedFixtureSandbox) Manifest(ctx context.Context, binary []byte) ([]byt
 }
 
 type staticManifestSandbox []byte
+
+func (staticManifestSandbox) testOnlyManifestSandbox() {}
 
 func (sandbox staticManifestSandbox) Manifest(context.Context, []byte) ([]byte, error) {
 	return append([]byte(nil), sandbox...), nil

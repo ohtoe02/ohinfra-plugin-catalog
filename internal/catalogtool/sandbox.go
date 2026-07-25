@@ -19,7 +19,7 @@ const (
 	releaseManifestTimeout     = 10 * time.Second
 	releaseManifestOutputLimit = 1 << 20
 	releaseManifestErrorLimit  = 64 << 10
-	dockerSandboxImage         = "debian:13-slim"
+	dockerSandboxImage         = "debian@sha256:28de0877c2189802884ccd20f15ee41c203573bd87bb6b883f5f46362d24c5c2"
 )
 
 type ManifestSandbox interface {

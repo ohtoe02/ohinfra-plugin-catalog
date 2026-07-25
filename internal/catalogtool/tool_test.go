@@ -57,6 +57,18 @@ func TestValidateRejectsPrereleaseHTTPAndManifestMismatch(t *testing.T) {
 		"fragment": func(entry *Entry) {
 			entry.Version.Assets[0].URL = "https://example.com/plugin#asset"
 		},
+		"wrong release repository": func(entry *Entry) {
+			entry.Version.Assets[0].URL =
+				"https://github.com/example/sample/releases/download/sample-v1.0.0/sample_linux_amd64"
+		},
+		"mutable release path": func(entry *Entry) {
+			entry.Version.Assets[0].URL =
+				"https://github.com/ohtoe02/ohtools-plugins/releases/latest/download/sample_linux_amd64"
+		},
+		"wrong release asset": func(entry *Entry) {
+			entry.Version.Assets[0].URL =
+				"https://github.com/ohtoe02/ohtools-plugins/releases/download/sample-v1.0.0/other_linux_amd64"
+		},
 		"identity": func(entry *Entry) { entry.Version.Manifest.Version = "9.9.9" },
 		"description mismatch": func(entry *Entry) {
 			entry.Version.Manifest.Description = "different"
@@ -419,7 +431,8 @@ func entryForManifest(manifest Manifest) Entry {
 			Manifest:    manifest,
 			Assets: []Asset{{
 				OS: "linux", Arch: "amd64",
-				URL:    "https://github.com/example/plugin/releases/download/v1.0.0/plugin",
+				URL: "https://github.com/ohtoe02/ohtools-plugins/releases/download/" +
+					manifest.Name + "-v" + manifest.Version + "/" + manifest.Name + "_linux_amd64",
 				SHA256: strings.Repeat("a", 64), SizeBytes: 1,
 			}},
 		},
@@ -495,7 +508,7 @@ version:
   assets:
     - os: linux
       arch: amd64
-      url: https://github.com/example/sample/releases/download/v1.0.0/sample
+      url: https://github.com/ohtoe02/ohtools-plugins/releases/download/sample-v1.0.0/sample_linux_amd64
       sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       size_bytes: 10
 `
@@ -541,7 +554,7 @@ version:
   assets:
     - os: linux
       arch: amd64
-      url: https://github.com/example/sample/releases/download/v1.0.0/sample
+      url: https://github.com/ohtoe02/ohtools-plugins/releases/download/sample-v1.0.0/sample_linux_amd64
       sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       size_bytes: 10
 `
@@ -562,17 +575,18 @@ func TestMaterializeVerifiesAssetAndWritesExpectedManifest(t *testing.T) {
 	}))
 	defer server.Close()
 	entry := validEntry("sample", "1.0.0", time.Now().UTC())
-	entry.Version.Assets[0].URL = server.URL + "/sample"
 	entry.Version.Assets[0].SHA256 = hex.EncodeToString(sum[:])
 	entry.Version.Assets[0].SizeBytes = int64(len(body))
-	parsed, _ := url.Parse(server.URL)
+	target, _ := url.Parse(server.URL)
+	client := server.Client()
+	client.Transport = rewriteRoundTripper{target: target, base: client.Transport}
 	output := t.TempDir()
 	if err := Materialize(
 		context.Background(),
 		[]Entry{entry},
 		output,
-		server.Client(),
-		[]string{parsed.Hostname()},
+		client,
+		[]string{"github.com"},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -598,6 +612,19 @@ func TestMaterializeVerifiesAssetAndWritesExpectedManifest(t *testing.T) {
 			}
 		}
 	}
+}
+
+type rewriteRoundTripper struct {
+	target *url.URL
+	base   http.RoundTripper
+}
+
+func (transport rewriteRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	clone := request.Clone(request.Context())
+	clone.URL.Scheme = transport.target.Scheme
+	clone.URL.Host = transport.target.Host
+	clone.Host = transport.target.Host
+	return transport.base.RoundTrip(clone)
 }
 
 func TestMaterializeCreatesVerificationDirectoryForEmptyCatalog(t *testing.T) {
@@ -672,7 +699,8 @@ func validEntry(name, version string, published time.Time) Entry {
 			},
 			Assets: []Asset{{
 				OS: "linux", Arch: "amd64",
-				URL:    "https://github.com/example/" + name + "/releases/download/v" + version + "/" + name,
+				URL: "https://github.com/ohtoe02/ohtools-plugins/releases/download/" +
+					name + "-v" + version + "/" + name + "_linux_amd64",
 				SHA256: strings.Repeat("a", 64), SizeBytes: 10,
 			}},
 		},

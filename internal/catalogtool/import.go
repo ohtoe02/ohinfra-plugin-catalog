@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -35,6 +36,9 @@ type ReleaseMetadata struct {
 }
 
 func ImportRelease(metadataPath, binaryPath, pluginsDirectory string) (string, error) {
+	if runtime.GOOS != "linux" {
+		return "", errors.New("production release import is supported only on Linux")
+	}
 	return ImportReleaseWithSandbox(
 		metadataPath,
 		binaryPath,
@@ -49,6 +53,14 @@ func ImportReleaseWithSandbox(
 	pluginsDirectory string,
 	sandbox ManifestSandbox,
 ) (string, error) {
+	if sandbox == nil {
+		return "", errors.New("release manifest sandbox is required")
+	}
+	if runtime.GOOS != "linux" {
+		if _, testOnly := sandbox.(testOnlyManifestSandbox); !testOnly {
+			return "", errors.New("production release import is supported only on Linux")
+		}
+	}
 	metadataBytes, err := readRegularFile(metadataPath, releaseMetadataLimit)
 	if err != nil {
 		return "", fmt.Errorf("release metadata: %w", err)
@@ -104,22 +116,10 @@ func ImportReleaseWithSandbox(
 	if err := validateOutputRoot(pluginsDirectory); err != nil {
 		return "", err
 	}
-	directory := filepath.Join(pluginsDirectory, entry.Name)
-	output := filepath.Join(directory, entry.Version.Version+".yaml")
+	output := filepath.Join(pluginsDirectory, entry.Name, entry.Version.Version+".yaml")
 	relative, err := filepath.Rel(pluginsDirectory, output)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", errors.New("release metadata resolves outside plugins directory")
-	}
-	if err := rejectSymlinkComponents(pluginsDirectory, directory); err != nil {
-		return "", err
-	}
-	if _, err := os.Lstat(output); err == nil {
-		return "", fmt.Errorf("catalog entry %s already exists", output)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
-	if sandbox == nil {
-		return "", errors.New("release manifest sandbox is required")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), releaseManifestTimeout)
 	defer cancel()
@@ -133,22 +133,19 @@ func ImportReleaseWithSandbox(
 	if err := CompareManifest(metadata.Manifest, actualManifest); err != nil {
 		return "", fmt.Errorf("release binary manifest: %w", err)
 	}
-	if err := os.MkdirAll(directory, 0o755); err != nil {
-		return "", err
-	}
-	if err := rejectSymlinkComponents(pluginsDirectory, directory); err != nil {
-		return "", err
-	}
-	if _, err := os.Lstat(output); err == nil {
-		return "", fmt.Errorf("catalog entry %s already exists", output)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", err
-	}
 	encoded, err := yaml.Marshal(entry)
 	if err != nil {
 		return "", err
 	}
-	if err := writeNewFileAtomic(output, encoded); err != nil {
+	if err := writeCatalogEntryAtomic(
+		pluginsDirectory,
+		entry.Name,
+		entry.Version.Version+".yaml",
+		encoded,
+	); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return "", fmt.Errorf("catalog entry %s already exists: %w", output, os.ErrExist)
+		}
 		return "", err
 	}
 	return output, nil
@@ -415,81 +412,9 @@ func validateOutputRoot(root string) error {
 	if filepath.Clean(absolute) == filepath.VolumeName(absolute)+string(filepath.Separator) {
 		return errors.New("plugins directory must not be a filesystem root")
 	}
-	return rejectExistingSymlinks(absolute)
-}
-
-func rejectExistingSymlinks(path string) error {
-	current := filepath.Clean(path)
-	for {
-		info, err := os.Lstat(current)
-		if err == nil && info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("output path contains symlink %s", current)
-		}
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			return nil
-		}
-		current = parent
-	}
-}
-
-func rejectSymlinkComponents(root, target string) error {
-	if err := rejectExistingSymlinks(root); err != nil {
-		return err
-	}
-	relative, err := filepath.Rel(root, target)
-	if err != nil {
-		return err
-	}
-	current := root
-	for _, component := range strings.Split(relative, string(filepath.Separator)) {
-		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
-		if err == nil && info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("output path contains symlink %s", current)
-		}
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-	}
 	return nil
 }
 
-func writeNewFileAtomic(path string, content []byte) error {
-	directory := filepath.Dir(path)
-	temp, err := os.CreateTemp(directory, ".catalog-entry-*")
-	if err != nil {
-		return err
-	}
-	tempName := temp.Name()
-	defer func() { _ = os.Remove(tempName) }()
-	if err := temp.Chmod(0o600); err != nil {
-		_ = temp.Close()
-		return err
-	}
-	if _, err := temp.Write(content); err != nil {
-		_ = temp.Close()
-		return err
-	}
-	if err := temp.Sync(); err != nil {
-		_ = temp.Close()
-		return err
-	}
-	if err := temp.Close(); err != nil {
-		return err
-	}
-	if err := commitNewFileNoReplace(tempName, path); err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return fmt.Errorf("catalog entry %s already exists: %w", path, os.ErrExist)
-		}
-		return err
-	}
-	return syncDirectory(directory)
-}
-
-func commitNewFileNoReplace(staged, target string) error {
-	return os.Link(staged, target)
+type testOnlyManifestSandbox interface {
+	testOnlyManifestSandbox()
 }

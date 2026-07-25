@@ -18,7 +18,7 @@ The document is strict JSON with exactly these fields:
   "asset": {
     "os": "linux",
     "arch": "amd64",
-    "url": "https://github.com/example/example-plugin/releases/download/v1.0.0/example-plugin_linux_amd64",
+    "url": "https://github.com/ohtoe02/ohtools-plugins/releases/download/example-plugin-v1.0.0/example-plugin_linux_amd64",
     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "size_bytes": 1234567
   },
@@ -66,7 +66,9 @@ go run ./cmd/catalogctl import-release \
 The importer reads regular non-symlink files, validates the exact binary, and
 copies those verified bytes into an isolated bind mount before invoking
 `manifest --protocol=1` through the local Docker runtime. The production path
-is fail-closed: `/usr/bin/docker` and the preloaded `debian:13-slim` image must
+is fail-closed: `/usr/bin/docker` and the preloaded
+`debian@sha256:28de0877c2189802884ccd20f15ee41c203573bd87bb6b883f5f46362d24c5c2`
+image must
 be available. The container has no network, runs non-root with a read-only
 filesystem, all capabilities dropped, `no-new-privileges`, and bounded CPU,
 memory, process count, output, and runtime. A timeout triggers explicit

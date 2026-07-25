@@ -275,6 +275,18 @@ func ValidateEntry(entry Entry) error {
 				"asset URL must use credential-free HTTPS without query or fragment",
 			)
 		}
+		expectedURL := fmt.Sprintf(
+			"https://github.com/ohtoe02/ohtools-plugins/releases/download/%s-v%s/%s_linux_amd64",
+			entry.Name,
+			entry.Version.Version,
+			entry.Name,
+		)
+		if asset.URL != expectedURL {
+			return fmt.Errorf(
+				"asset URL must be the immutable first-party release URL %q",
+				expectedURL,
+			)
+		}
 	}
 	return nil
 }
