@@ -12,12 +12,15 @@ The example registers:
   atomically writes `/tmp/ohtools-example/message.txt`.
 
 The write command demonstrates the protocol flow and should not be treated as a
-recommended location for real plugin state.
+recommended location for real plugin state. It compares observed and desired
+content: after a successful write, a repeated plan has no changes and execute
+returns `changed=false` with reason `already_desired`.
 
 ## Project files
 
 - `main.go` — wire types and `manifest`, `plan`, and `execute` handlers.
-- `main_test.go` — protocol contract and security tests.
+- `main_test.go` — unit checks plus a real-binary manifest/plan/execute
+  idempotency harness.
 - `testdata/invocation.json` — a host Invocation v1 fixture.
 - `testdata/manifest.json` — the manifest golden shared with catalog checks.
 - `Makefile` — local test, vet, static build, and manifest targets.

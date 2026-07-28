@@ -55,7 +55,7 @@ version:
   assets:
     - os: linux
       arch: amd64
-      url: https://github.com/example/postgres-tools/releases/download/v1.2.0/postgres-tools_linux_amd64
+      url: https://github.com/ohtoe02/ohtools-plugins/releases/download/postgres-tools-v1.2.0/postgres-tools_linux_amd64
       sha256: "4f5c3f0f2d9e8718863c56330e69c5101e2b1ef90e95cf3b037b3583dcfef357"
       size_bytes: 7340032
 ```

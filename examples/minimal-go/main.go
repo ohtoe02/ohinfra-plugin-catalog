@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,12 +14,12 @@ import (
 	"time"
 )
 
-const (
-	protocolVersion = 1
-	defaultRoot     = "/tmp/ohtools-example"
-)
+const protocolVersion = 1
 
-var version = "1.0.0"
+var (
+	version     = "1.0.0"
+	defaultRoot = "/tmp/ohtools-example"
+)
 
 type Manifest struct {
 	ProtocolVersion int       `json:"protocol_version"`
@@ -256,6 +257,21 @@ func buildPlan(invocation Invocation, root string) (Plan, error) {
 		return Plan{}, errors.New("example write requires exactly one text argument")
 	}
 	target := filepath.Join(root, "message.txt")
+	desired := []byte(invocation.Arguments[0] + "\n")
+	if current, err := os.ReadFile(target); err == nil {
+		if bytes.Equal(current, desired) {
+			return Plan{
+				CommandID:            "example.write",
+				Summary:              "Example message already has the desired content",
+				Checks:               []Check{},
+				Changes:              []Change{},
+				Risks:                []string{},
+				RequiresConfirmation: true,
+			}, nil
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return Plan{}, fmt.Errorf("inspect example message: %w", err)
+	}
 	return Plan{
 		CommandID: "example.write",
 		Summary:   "Write the example message file",
@@ -312,10 +328,21 @@ func execute(invocation Invocation, root string, now func() time.Time) (Result, 
 			return Result{}, errors.New("plan digest does not match the approved plan")
 		}
 		target := filepath.Join(root, "message.txt")
+		if len(plan.Changes) == 0 {
+			return canonicalResult("example write", now(), map[string]any{
+				"changed": false,
+				"reason":  "already_desired",
+				"path":    target,
+			}), nil
+		}
 		if err := atomicWrite(target, []byte(invocation.Arguments[0]+"\n")); err != nil {
 			return Result{}, err
 		}
-		result := canonicalResult("example write", now(), map[string]any{"path": target})
+		result := canonicalResult("example write", now(), map[string]any{
+			"changed": true,
+			"reason":  "desired_state_applied",
+			"path":    target,
+		})
 		result.Changes = []Change{{
 			Object: target,
 			Action: "write",

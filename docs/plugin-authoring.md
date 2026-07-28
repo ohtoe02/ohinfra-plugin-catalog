@@ -211,16 +211,24 @@ and proxy environment variables.
 
 ## Prepare the catalog contribution
 
-Create one file:
+The release workflow should emit `release-metadata-v1.json` next to the exact
+binary. Download both files without credentials, then import them:
 
-```text
-plugins/<plugin-name>/<version>.yaml
+```bash
+go run ./cmd/catalogctl import-release \
+  --metadata ./release-metadata-v1.json \
+  --binary ./plugin_linux_amd64 \
+  --sandbox-runtime /usr/bin/docker \
+  --plugins plugins
 ```
 
-Start from the
-[`1.0.0.yaml` template](../examples/minimal-go/catalog/example-plugin/1.0.0.yaml).
-Replace every placeholder, zero digest, and example byte size. Copy the exact
-manifest returned by the released binary.
+The command strictly decodes the sidecar, rejects symlinks and credential URLs,
+checks the binary size and SHA-256, verifies the exact manifest in the same
+restricted Docker sandbox used by CI, and creates
+`plugins/<plugin-name>/<version>.yaml` with atomic create-if-absent semantics.
+It fails closed if the trusted Docker CLI or preloaded sandbox image is
+unavailable.
+See the [release metadata reference](release-metadata-v1.md).
 
 Read the complete [catalog entry reference](catalog-entry.md), then run:
 
@@ -262,4 +270,3 @@ silently replace installed binaries.
 
 Prereleases, downgrade, arm64, user plugin directories, multiple catalogs, and
 self-service signing keys are outside protocol/catalog v1.
-

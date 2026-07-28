@@ -63,6 +63,12 @@ func Materialize(
 }
 
 func CompareManifest(expected Manifest, actual []byte) error {
+	if err := rejectDuplicateJSONFields(actual); err != nil {
+		return err
+	}
+	if err := validateManifestPresence(actual); err != nil {
+		return err
+	}
 	decoder := json.NewDecoder(bytes.NewReader(actual))
 	decoder.DisallowUnknownFields()
 	var manifest Manifest
@@ -154,19 +160,34 @@ func secureHTTPClient(provided *http.Client, allowedHosts []string) *http.Client
 			},
 		}
 	}
+	client.Jar = nil
 	client.CheckRedirect = func(request *http.Request, via []*http.Request) error {
 		if len(via) >= 5 {
 			return errors.New("redirect limit exceeded")
 		}
-		return validateAssetURL(request.URL.String(), allowedHosts)
+		if err := validateAssetRedirectURL(request.URL.String(), allowedHosts); err != nil {
+			return err
+		}
+		// Release downloads never require caller credentials. Strip every
+		// inherited header before following a redirect so a compromised source
+		// host cannot disclose client-specific metadata to an asset host.
+		request.Header = make(http.Header)
+		request.Host = ""
+		return nil
 	}
 	return &client
 }
 
 func validateAssetURL(value string, allowedHosts []string) error {
 	parsed, err := url.Parse(value)
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
-		return errors.New("asset URL must use credential-free HTTPS")
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" ||
+		parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return errors.New(
+			"asset URL must use credential-free HTTPS without query or fragment",
+		)
+	}
+	if err := validateAssetPort(parsed, "asset"); err != nil {
+		return err
 	}
 	host := strings.ToLower(parsed.Hostname())
 	for _, allowed := range allowedHosts {
@@ -175,4 +196,48 @@ func validateAssetURL(value string, allowedHosts []string) error {
 		}
 	}
 	return fmt.Errorf("asset host %q is not allowed", host)
+}
+
+func validateAssetRedirectURL(value string, allowedHosts []string) error {
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" ||
+		parsed.User != nil || parsed.Fragment != "" {
+		return errors.New(
+			"asset redirect URL must use credential-free HTTPS without fragment",
+		)
+	}
+	if err := validateAssetPort(parsed, "asset redirect"); err != nil {
+		return err
+	}
+	host := strings.ToLower(parsed.Hostname())
+	allowed := false
+	for _, candidate := range allowedHosts {
+		if host == strings.ToLower(candidate) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return fmt.Errorf("asset redirect host %q is not allowed", host)
+	}
+	if parsed.RawQuery != "" && !signedGitHubAssetHost(host) {
+		return fmt.Errorf("asset redirect host %q may not use a query", host)
+	}
+	return nil
+}
+
+func validateAssetPort(parsed *url.URL, context string) error {
+	if port := parsed.Port(); port != "" && port != "443" {
+		return fmt.Errorf("%s port %q is not allowed", context, port)
+	}
+	return nil
+}
+
+func signedGitHubAssetHost(host string) bool {
+	switch host {
+	case "release-assets.githubusercontent.com", "objects.githubusercontent.com":
+		return true
+	default:
+		return false
+	}
 }
