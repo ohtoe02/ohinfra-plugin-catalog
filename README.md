@@ -4,6 +4,11 @@ This public repository is the curated source for plugins installable through
 `ohtools plugin`. It stores reviewable version entries; clients consume only
 Ed25519-signed snapshots published as immutable GitHub Release assets.
 
+Browse the verified catalog and bilingual documentation in the public
+[ohtools developer portal](https://ohtoe02.github.io/ohtools-web/). The portal
+verifies the signed snapshot during its production build and performs no
+catalog requests in the browser.
+
 The initial catalog is intentionally empty. Plugin publishers add one strict
 YAML entry per version under `plugins/<name>/<version>.yaml`.
 
