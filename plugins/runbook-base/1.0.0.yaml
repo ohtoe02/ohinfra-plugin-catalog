@@ -1,0 +1,64 @@
+name: runbook-base
+description: Read-only local runbook discovery and validation for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:49Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: runbook-base
+        version: 1.0.0
+        description: Read-only local runbook discovery and validation for ohtools.
+        commands:
+            - path:
+                - runbook
+                - list
+              use: list
+              short: List local runbook documents
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - runbook
+                - inspect
+              use: inspect <name>
+              short: Inspect a local runbook document
+              category: diagnostic
+              arguments:
+                - name: name
+                  description: Runbook name
+                  required: true
+                  variadic: false
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - runbook
+                - validate
+              use: validate [name]
+              short: Validate local runbook documents
+              category: diagnostic
+              arguments:
+                - name: name
+                  description: Optional runbook name
+                  required: false
+                  variadic: false
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/runbook-base-v1.0.0/runbook-base_linux_amd64
+          sha256: 5029a0bdf609776470b78885d36ac3d2c3b36a4de240470284b561880271111d
+          size_bytes: 3055778

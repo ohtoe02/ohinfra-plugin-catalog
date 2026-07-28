@@ -1,0 +1,44 @@
+name: baseline-base
+description: Compiled local operating system baseline evaluation for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:22Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: baseline-base
+        version: 1.0.0
+        description: Compiled local operating system baseline evaluation for ohtools.
+        commands:
+            - path:
+                - baseline
+                - check
+              use: check
+              short: Evaluate the compiled local baseline
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - baseline
+                - profile
+              use: profile
+              short: Show the effective compiled baseline profile
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/baseline-base-v1.0.0/baseline-base_linux_amd64
+          sha256: 22b72399297062e1d56f33344408bd210f9ee4d022db24c1db0770e9ae6b04f4
+          size_bytes: 3268770

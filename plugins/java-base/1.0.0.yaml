@@ -1,0 +1,60 @@
+name: java-base
+description: Local Java runtime and process diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:33Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: java-base
+        version: 1.0.0
+        description: Local Java runtime and process diagnostics for ohtools.
+        commands:
+            - path:
+                - java
+                - runtime
+              use: runtime
+              short: Show the local Java runtime version
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - java
+                - processes
+              use: processes
+              short: Show local Java processes
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - java
+                - inspect
+              use: inspect <pid>
+              short: Inspect a local Java process
+              category: diagnostic
+              arguments:
+                - name: pid
+                  description: Positive decimal process ID
+                  required: true
+                  variadic: false
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/java-base-v1.0.0/java-base_linux_amd64
+          sha256: 046780d97d2afb02d6cc4d7f35777d67b626b4cb50447b58c00bd1b34ea3d4f9
+          size_bytes: 3018914

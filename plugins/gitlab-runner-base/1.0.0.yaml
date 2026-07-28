@@ -1,0 +1,56 @@
+name: gitlab-runner-base
+description: Local GitLab Runner service, configuration, and executor diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:39Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: gitlab-runner-base
+        version: 1.0.0
+        description: Local GitLab Runner service, configuration, and executor diagnostics for ohtools.
+        commands:
+            - path:
+                - gitlab-runner
+                - status
+              use: status
+              short: Show local GitLab Runner service and process state
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - gitlab-runner
+                - config
+              use: config
+              short: Show safe local GitLab Runner configuration metadata
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - gitlab-runner
+                - executors
+              use: executors
+              short: Show configured local GitLab Runner executors
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/gitlab-runner-base-v1.0.0/gitlab-runner-base_linux_amd64
+          sha256: a910c1baeafa95ada9e970bb216d49af7549cf5772815a02953f41af71e41c20
+          size_bytes: 3039394

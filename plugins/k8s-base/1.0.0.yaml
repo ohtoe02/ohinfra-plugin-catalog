@@ -1,0 +1,56 @@
+name: k8s-base
+description: Local Kubernetes client, kubelet, context, and manifest diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:39Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: k8s-base
+        version: 1.0.0
+        description: Local Kubernetes client, kubelet, context, and manifest diagnostics for ohtools.
+        commands:
+            - path:
+                - k8s
+                - status
+              use: status
+              short: Show local Kubernetes client and kubelet state
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - k8s
+                - contexts
+              use: contexts
+              short: Show safe local kubeconfig metadata
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - k8s
+                - manifests
+              use: manifests
+              short: Inspect local static Kubernetes manifests
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/k8s-base-v1.0.0/k8s-base_linux_amd64
+          sha256: 780237693880bcbccf342879d838c86ad7b3ee1699c88a271248f0e23fad54b6
+          size_bytes: 3285154

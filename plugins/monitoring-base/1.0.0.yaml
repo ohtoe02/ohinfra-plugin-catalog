@@ -1,0 +1,56 @@
+name: monitoring-base
+description: Read-only local monitoring product diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:53Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: monitoring-base
+        version: 1.0.0
+        description: Read-only local monitoring product diagnostics for ohtools.
+        commands:
+            - path:
+                - monitoring
+                - status
+              use: status
+              short: Show local monitoring product status
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - monitoring
+                - inventory
+              use: inventory
+              short: Inventory local monitoring products
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - monitoring
+                - config
+              use: config
+              short: Inspect local monitoring configuration metadata
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/monitoring-base-v1.0.0/monitoring-base_linux_amd64
+          sha256: 14438dbdc1fa1bccb91a264b3adcd4954889d706c9d7d8f9b0040771ebe0ea08
+          size_bytes: 3023010

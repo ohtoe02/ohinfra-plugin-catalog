@@ -1,0 +1,68 @@
+name: apt-base
+description: Read-only local APT and dpkg diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:29Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: apt-base
+        version: 1.0.0
+        description: Read-only local APT and dpkg diagnostics for ohtools.
+        commands:
+            - path:
+                - apt
+                - status
+              use: status
+              short: Inspect local dpkg database state
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - apt
+                - updates
+              use: updates
+              short: Simulate available package upgrades
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - apt
+                - sources
+              use: sources
+              short: Inspect configured APT sources
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - apt
+                - history
+              use: history
+              short: Inspect local APT transaction history
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/apt-base-v1.0.0/apt-base_linux_amd64
+          sha256: 9cfb5ff6fa18b03c7ed31dce7e36de7ff6215f8dce2002efe9aba90f4a7c520c
+          size_bytes: 3129506
