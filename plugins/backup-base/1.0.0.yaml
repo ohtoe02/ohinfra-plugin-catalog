@@ -1,0 +1,56 @@
+name: backup-base
+description: Read-only local backup diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:48Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: backup-base
+        version: 1.0.0
+        description: Read-only local backup diagnostics for ohtools.
+        commands:
+            - path:
+                - backup
+                - status
+              use: status
+              short: Show local backup status
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - backup
+                - inventory
+              use: inventory
+              short: Inventory local backup tools
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - backup
+                - history
+              use: history
+              short: Show bounded local backup history
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/backup-base-v1.0.0/backup-base_linux_amd64
+          sha256: eaef734538ee58702dea35584ed721c49ac0e7037361b03e640a3c306e61c0cb
+          size_bytes: 3002530

@@ -1,0 +1,56 @@
+name: postgres-base
+description: Read-only local PostgreSQL diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:34Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: postgres-base
+        version: 1.0.0
+        description: Read-only local PostgreSQL diagnostics for ohtools.
+        commands:
+            - path:
+                - postgres
+                - status
+              use: status
+              short: Show local PostgreSQL status
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - postgres
+                - clusters
+              use: clusters
+              short: List local PostgreSQL clusters
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - postgres
+                - config
+              use: config
+              short: Inspect local PostgreSQL configuration
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/postgres-base-v1.0.0/postgres-base_linux_amd64
+          sha256: 87c15ae5c8081bd15368bf0105ffe18c568d18e290274209beb016e2cd121ccc
+          size_bytes: 3023010

@@ -1,0 +1,56 @@
+name: server-setup-base
+description: Local server baseline checks and controlled setup operations for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:28:20Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: server-setup-base
+        version: 1.0.0
+        description: Local server baseline checks and controlled setup operations for ohtools.
+        commands:
+            - path:
+                - setup
+                - check
+              use: check
+              short: Check the compiled server setup baseline
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - setup
+                - apply
+              use: apply
+              short: Apply the compiled server setup baseline
+              category: operational
+              arguments: []
+              flags: []
+              requires_root: true
+              requires_force: false
+              supports_dry_run: true
+              requires_confirmation: true
+            - path:
+                - setup
+                - upgrade
+              use: upgrade
+              short: Upgrade ohtools-owned setup state
+              category: operational
+              arguments: []
+              flags: []
+              requires_root: true
+              requires_force: false
+              supports_dry_run: true
+              requires_confirmation: true
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/server-setup-base-v1.0.0/server-setup-base_linux_amd64
+          sha256: e42e556702fba7c0e12382c6faead6df6dc6973cd24da4264bd5945f0c316982
+          size_bytes: 3428514

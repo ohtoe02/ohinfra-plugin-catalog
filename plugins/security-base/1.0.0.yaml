@@ -1,0 +1,68 @@
+name: security-base
+description: Local account, SSH, and firewall security diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:26Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: security-base
+        version: 1.0.0
+        description: Local account, SSH, and firewall security diagnostics for ohtools.
+        commands:
+            - path:
+                - security
+                - audit
+              use: audit
+              short: Audit local account, SSH, and firewall posture
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - security
+                - accounts
+              use: accounts
+              short: Inspect local account security metadata
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - security
+                - ssh
+              use: ssh
+              short: Inspect local SSH server security posture
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - security
+                - firewall
+              use: firewall
+              short: Inspect local firewall state
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/security-base-v1.0.0/security-base_linux_amd64
+          sha256: 0aeb622126796c99b76ba77643adec1d35e675c9a0316ba45b3684bbea900c01
+          size_bytes: 3051682

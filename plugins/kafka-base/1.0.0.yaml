@@ -1,0 +1,56 @@
+name: kafka-base
+description: Read-only local Kafka diagnostics for ohtools.
+homepage: https://github.com/ohtoe02/ohtools-plugins
+version:
+    version: 1.0.0
+    minimum_ohtools_version: 0.3.2
+    published_at: 2026-07-28T03:30:42Z
+    yanked: false
+    manifest:
+        protocol_version: 1
+        name: kafka-base
+        version: 1.0.0
+        description: Read-only local Kafka diagnostics for ohtools.
+        commands:
+            - path:
+                - kafka
+                - status
+              use: status
+              short: Show local Kafka status
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - kafka
+                - config
+              use: config
+              short: Inspect local Kafka configuration
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+            - path:
+                - kafka
+                - storage
+              use: storage
+              short: Inspect local Kafka storage
+              category: diagnostic
+              arguments: []
+              flags: []
+              requires_root: false
+              requires_force: false
+              supports_dry_run: false
+              requires_confirmation: false
+    assets:
+        - os: linux
+          arch: amd64
+          url: https://github.com/ohtoe02/ohtools-plugins/releases/download/kafka-base-v1.0.0/kafka-base_linux_amd64
+          sha256: 7599481b946ddc125c0b1b233a5f4fafe3b2c3e77ccc6f4de7fd1335ed5c64e7
+          size_bytes: 3043490
